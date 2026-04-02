@@ -1,6 +1,6 @@
 services:
   web:
-    image: odoo-dev:${ODOO_TARGET_VERSION}
+    image: odoo-dev:${ODOO_VERSION}
     depends_on:
       db:
         condition: service_healthy
@@ -12,18 +12,12 @@ services:
       - odoo-web-data:/var/lib/odoo
       # Configuration file if necessary
       - ./config:/etc/odoo
-      # Source code -> <local_path>:<path_inside_container>
-      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/odoo:/opt/odoo-src/odoo:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/enterprise:/opt/odoo-src/enterprise:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/design-themes:/opt/odoo-src/design-themes:ro
-      # Reference source code -> <local_path>:<path_inside_container>
-      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/odoo:/mnt/reference/odoo:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/enterprise:/mnt/reference/enterprise:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/design-themes:/mnt/reference/design-themes:ro
+      # Reference source code (read-only) -> <local_path>:<path_inside_container>
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/enterprise:/mnt/reference/enterprise:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
       # Custom modules -> <local_path>:<path_inside_container>
       - ${CUSTOMER_REPO}:/mnt/extra-addons
-      # Upgrade path -> <local_path>:<path_inside_container>
-      - ${ODOO_UPGRADE_PATH}:/mnt/upgrade:ro
       # Bare git repos — mounted at the same host path so git worktree
       # pointers resolve inside the container (required for GitLens)
       - ${ODOO_VAULT_PATH}:${ODOO_VAULT_PATH}:ro
@@ -40,12 +34,12 @@ services:
       - |
         if [ "$$ODOO_DEBUG" = "true" ]; then
           exec python3 -m debugpy --listen 0.0.0.0:5678 \
-            /opt/odoo-src/odoo/odoo-bin \
+            /mnt/reference/odoo/odoo-bin \
             --config /etc/odoo/odoo.conf \
             -d $$ODOO_DB_NAME \
             $$ODOO_EXTRA_ARGS
         else
-          exec python3 /opt/odoo-src/odoo/odoo-bin \
+          exec python3 /mnt/reference/odoo/odoo-bin \
             --config /etc/odoo/odoo.conf \
             -d $$ODOO_DB_NAME \
             $$ODOO_EXTRA_ARGS

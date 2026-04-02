@@ -4,19 +4,11 @@ export
 .PHONY: start stop restart restart-all logs shell ps init restore upgrade test test-tags test-file build destroy fetch-all check-worktrees list-worktrees help
 
 check-worktrees:
-	@_target=$$(eval echo "$(ODOO_WORKTREE_PATH)/$(ODOO_TARGET_VERSION)"); \
-	if [ ! -d "$$_target" ]; then \
+	@_version=$$(eval echo "$(ODOO_WORKTREE_PATH)/$(ODOO_VERSION)"); \
+	if [ ! -d "$$_version" ]; then \
 		echo ""; \
-		echo "  \033[31mError: worktree not found for ODOO_TARGET_VERSION=$(ODOO_TARGET_VERSION)\033[0m"; \
-		echo "  Run: bash worktree.sh add $(ODOO_TARGET_VERSION)"; \
-		echo ""; \
-		exit 1; \
-	fi
-	@_source=$$(eval echo "$(ODOO_WORKTREE_PATH)/$(ODOO_SOURCE_VERSION)"); \
-	if [ ! -d "$$_source" ]; then \
-		echo ""; \
-		echo "  \033[31mError: worktree not found for ODOO_SOURCE_VERSION=$(ODOO_SOURCE_VERSION)\033[0m"; \
-		echo "  Run: bash worktree.sh add $(ODOO_SOURCE_VERSION)"; \
+		echo "  \033[31mError: worktree not found for ODOO_VERSION=$(ODOO_VERSION)\033[0m"; \
+		echo "  Run: bash worktree.sh add $(ODOO_VERSION)"; \
 		echo ""; \
 		exit 1; \
 	fi
@@ -61,7 +53,7 @@ init: check-worktrees ## Initialize a fresh database with the base module
 	@docker compose exec db createdb -U odoo $(ODOO_DB_NAME) > /dev/null 2>&1
 	@echo "  Installing base module (this may take a while)..."
 	@docker compose run --rm --no-deps web \
-		python3 /opt/odoo-src/odoo/odoo-bin \
+		python3 /mnt/reference/odoo/odoo-bin \
 		--config /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		-i base \
@@ -74,14 +66,14 @@ restore: ## Restore a database. Usage: make restore dump=file.dump
 	./restore.sh dumps/$(dump)
 
 upgrade: ## Upgrade Odoo modules. Usage: make upgrade modules=mod1,mod2
-	docker compose exec web python /opt/odoo-src/odoo/odoo-bin \
+	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		-u $(modules) \
 		--stop-after-init
 
 test: ## Run tests for modules. Usage: make test modules=sale,account
-	docker compose exec web python /opt/odoo-src/odoo/odoo-bin \
+	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		-u $(modules) \
@@ -89,14 +81,14 @@ test: ## Run tests for modules. Usage: make test modules=sale,account
 		--stop-after-init
 
 test-tags: ## Run tests by tag. Usage: make test-tags tags=/module:Class.method
-	docker compose exec web python /opt/odoo-src/odoo/odoo-bin \
+	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		--test-tags $(tags) \
 		--stop-after-init
 
 test-file: ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py
-	docker compose exec web python /opt/odoo-src/odoo/odoo-bin \
+	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		--test-file $(file) \
@@ -122,8 +114,8 @@ fetch-all: ## Fetch latest refs for all vault repos (odoo, enterprise, design-th
 
 build: ## Build the Docker image for the target version. Usage: make build
 	docker build \
-		-t odoo-dev:$(ODOO_TARGET_VERSION) \
-		$(ODOO_WORKTREE_PATH)/$(ODOO_TARGET_VERSION)
+		-t odoo-dev:$(ODOO_VERSION) \
+		$(ODOO_WORKTREE_PATH)/$(ODOO_VERSION)
 
 list-worktrees: ## List all available worktrees
 	@_path=$$(eval echo "$(ODOO_WORKTREE_PATH)"); \
@@ -135,10 +127,8 @@ list-worktrees: ## List all available worktrees
 	else \
 		for dir in "$$_path"/*/; do \
 			version=$$(basename "$$dir"); \
-			if [ "$$version" = "$(ODOO_TARGET_VERSION)" ]; then \
-				echo "  \033[32m● $$version\033[0m  (target)"; \
-			elif [ "$$version" = "$(ODOO_SOURCE_VERSION)" ]; then \
-				echo "  \033[36m● $$version\033[0m  (source)"; \
+			if [ "$$version" = "$(ODOO_VERSION)" ]; then \
+				echo "  \033[32m● $$version\033[0m  (active)"; \
 			else \
 				echo "  \033[90m○ $$version\033[0m"; \
 			fi; \
