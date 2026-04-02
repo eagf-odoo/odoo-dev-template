@@ -44,7 +44,7 @@ cd ~/Odoo/Customers/acme
 cp .env.example .env
 ```
 
-Edit `.env` with the values for your client (versions, database name, paths).
+Edit `.env` with the values for your client (version, database name, paths).
 
 > **`ODOO_VAULT_PATH` must be an absolute path.** Use `$HOME/Odoo/.vault` or the
 > equivalent — do not use `~`. Docker Compose expands tilde in the source (host)
@@ -57,13 +57,28 @@ Edit `.env` with the values for your client (versions, database name, paths).
 make build
 ```
 
-**4. Start the environment**
+**4. Initialize or restore a database**
+
+For a fresh database:
+
+```bash
+make init
+```
+
+To restore from a dump file:
+
+```bash
+make restore dump=acme_prod.dump
+```
+
+**5. Start the environment**
 
 ```bash
 make start
 ```
 
-Odoo will be available at <https://localhost:8069>
+`make start` waits for Odoo to finish loading and prints a ready notice with the URL.
+Odoo will be available at http://localhost:8069
 
 ---
 

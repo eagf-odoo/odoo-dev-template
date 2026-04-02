@@ -7,8 +7,8 @@ Practical reference for the most common scenarios when working with this templat
 ## 1. Single client — full setup from scratch
 
 ```bash
-# 1. Clone the template
-git clone git@github.com:eagf-odoo/odoo-dev-template.git ~/Odoo/Customers/acme
+# 1. Clone the template (maintenance branch)
+git clone --branch maintenance git@github.com:eagf-odoo/odoo-dev-template.git ~/Odoo/Customers/acme
 cd ~/Odoo/Customers/acme
 
 # 2. Clone the client's module repository
@@ -16,18 +16,22 @@ git clone git@github.com:acme/acme-addons.git ~/Odoo/Repos/acme-addons
 
 # 3. Configure the environment
 cp .env.example .env
-# Edit .env — set versions, CUSTOMER_REPO, ODOO_DB_NAME, etc.
+# Edit .env — set ODOO_VERSION, CUSTOMER_REPO, ODOO_DB_NAME, etc.
 
 # 4. Get the Docker image (see section 5 or 6)
 
 # 5. Place the database dump
 cp ~/Downloads/acme_prod.dump ~/Odoo/Dumps/
 
-# 6. Start the environment
-make start
-
-# 7. Restore the database
+# 6. Restore the database
 make restore dump=acme_prod.dump
+
+# Or initialize a fresh database instead:
+# make init
+
+# 7. Start the environment
+make start
+# → waits until Odoo is ready, then prints the URL
 
 # 8. Open VS Code, reopen in container, then open the workspace
 code .
@@ -119,17 +123,17 @@ test changes to the Dockerfile.
 ```bash
 cd ~/Odoo/Customers/acme
 
-# Builds odoo-dev:<ODOO_TARGET_VERSION> from the worktree Dockerfile
+# Builds odoo-dev:<ODOO_VERSION> from the worktree Dockerfile
 make build
 ```
 
-The image is built from `~/Odoo/Worktrees/<ODOO_TARGET_VERSION>/Dockerfile`
-and tagged as `odoo-dev:<version>` (e.g. `odoo-dev:18.0`).
+The image is built from `~/Odoo/Worktrees/<ODOO_VERSION>/Dockerfile`
+and tagged as `odoo-dev:<version>` (e.g. `odoo-dev:17.0`).
 
 To build for a specific version without changing your .env:
 
 ```bash
-ODOO_TARGET_VERSION=17.0 make build
+ODOO_VERSION=17.0 make build
 ```
 
 ---
@@ -158,6 +162,8 @@ make start
 |---|---|
 | Single client | Default ports (`8069`, `5678`) |
 | Two clients | Different `ODOO_PORT` and `ODOO_DEBUG_PORT` per client |
-| Upgrade workflow | `ODOO_SOURCE_VERSION` + `ODOO_TARGET_VERSION` |
+| Maintenance / bugfix | `ODOO_VERSION` (this branch) |
 | Hot reload | `ODOO_EXTRA_ARGS=--dev=all` |
 | No debugger overhead | `ODOO_DEBUG=false` |
+| Fresh database | `make init` then `make start` |
+| Restore from dump | `make restore dump=file.dump` then `make start` |
