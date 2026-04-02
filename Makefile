@@ -40,7 +40,12 @@ ps: ## Show container status
 	docker compose ps
 
 pgadmin: ## Start pgAdmin4 at http://localhost:5050
-	docker compose --profile pgadmin up -d
+	@echo ""
+	@echo "  Waiting for pgAdmin to be ready..."
+	@docker compose --profile pgadmin up -d --wait \
+		&& echo "  \033[32m✓ pgAdmin is ready → http://localhost:$${PGADMIN_PORT:-5050}\033[0m" \
+		|| true
+	@echo ""
 
 init: check-worktrees ## Initialize a fresh database with the base module
 	@echo ""
