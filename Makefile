@@ -16,10 +16,16 @@ check-worktrees:
 start: check-worktrees ## Start the environment
 	docker compose up -d
 	@echo ""
-	@echo "  Waiting for Odoo to be ready..."
-	@docker compose logs -f web 2>/dev/null | grep --line-buffered -m 1 "odoo.modules.loading: Modules loaded." > /dev/null \
-		&& echo "  \033[32m✓ Odoo is ready → http://localhost:$${ODOO_PORT:-8069}\033[0m" \
-		|| true
+	@docker compose logs -f web 2>/dev/null | grep --line-buffered -m 1 "odoo.modules.loading: Modules loaded." > /dev/null & \
+	GREP_PID=$$!; \
+	spin='-\|/'; \
+	i=0; \
+	while kill -0 $$GREP_PID 2>/dev/null; do \
+		i=$$(( (i + 1) % 4 )); \
+		printf "\r  Waiting for Odoo to be ready... [%s] " "$${spin:$$i:1}"; \
+		sleep 0.1; \
+	done; \
+	printf "\r  \033[32m✓ Odoo is ready → http://localhost:$${ODOO_PORT:-8069}\033[0m          \n"
 	@echo ""
 
 stop: ## Stop the environment
