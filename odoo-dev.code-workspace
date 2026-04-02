@@ -4,29 +4,25 @@
     // "Dev Containers: Reopen in Container" (Cmd+Shift+P)
     "folders": [
         {
-            "path": "/opt/odoo-src",
-            "name": "1. Odoo target version"
-        },
-        {
             "path": "/mnt/reference",
-            "name": "2. Odoo source version (For reference only)"
+            "name": "1. Odoo source code"
         },
         {
-            "path": "/mnt/upgrade",
-            "name": "3. Upgrade tools"
+            "path": "/mnt/upgrade-util/src",
+            "name": "2. Upgrade util"
         },
         {
             "path": "/mnt/extra-addons",
-            "name": "4. Custom Developments"
+            "name": "3. Custom Developments"
         }
     ],
     "settings": {
         "python.analysis.extraPaths": [
-            "/opt/odoo-src/odoo",
-            "/opt/odoo-src/enterprise",
-            "/opt/odoo-src/design-themes",
+            "/mnt/reference/odoo",
+            "/mnt/reference/enterprise",
+            "/mnt/reference/design-themes",
             "/mnt/extra-addons",
-            "/mnt/upgrade"
+            "/mnt/upgrade-util/src"
         ],
         "files.exclude": {
             "**/*.pyc": true,

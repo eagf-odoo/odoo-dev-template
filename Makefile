@@ -17,7 +17,7 @@ start: check-worktrees ## Start the environment
 	docker compose up -d
 	@echo ""
 	@echo "  Waiting for Odoo to be ready..."
-	@docker compose logs -f web 2>/dev/null | grep --line-buffered -m 1 "odoo.registry: Registry loaded in" > /dev/null \
+	@docker compose logs -f web 2>/dev/null | grep --line-buffered -m 1 "odoo.modules.loading: Modules loaded." > /dev/null \
 		&& echo "  \033[32m✓ Odoo is ready → http://localhost:$${ODOO_PORT:-8069}\033[0m" \
 		|| true
 	@echo ""
