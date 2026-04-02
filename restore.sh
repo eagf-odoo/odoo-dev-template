@@ -18,13 +18,16 @@ fi
 echo "1. Stop Odoo's web service to free database..."
 docker compose stop web >/dev/null 2>&1
 
-echo "2. Deleting existent databse if exists ($ODOO_DB_NAME)..."
+echo "2. Starting database service..."
+docker compose up -d --wait db >/dev/null 2>&1
+
+echo "3. Deleting existent databse if exists ($ODOO_DB_NAME)..."
 docker compose exec db dropdb -U odoo --if-exists $ODOO_DB_NAME >/dev/null 2>&1
 
-echo "3. Creating a fresh database ($ODOO_DB_NAME)..."
+echo "4. Creating a fresh database ($ODOO_DB_NAME)..."
 docker compose exec db createdb -U odoo $ODOO_DB_NAME >/dev/null 2>&1
 
-echo "4. Restoring dump file $FILE..."
+echo "5. Restoring dump file $FILE..."
 
 # Send restoring process to background
 if [[ $FILE == *.dump ]]; then
@@ -57,11 +60,11 @@ fi
 
 printf "\r   Database restored successfully!                   \n"
 
-echo "5. Changing access credentials to <admin:admin>..."
+echo "6. Changing access credentials to <admin:admin>..."
 SQL_QUERY="WITH admin_info AS(SELECT res_id AS id FROM ir_model_data WHERE name = 'user_admin' AND module = 'base') UPDATE res_users ru SET password='admin', login='admin' FROM admin_info i WHERE ru.id=i.id;"
 docker compose exec db psql -U odoo -d $ODOO_DB_NAME -c "$SQL_QUERY" -q >/dev/null 2>&1
 
-echo "6. Restarting Odoo..."
+echo "7. Restarting Odoo..."
 docker compose start web >/dev/null 2>&1
 
 echo "Datasbase restored successfully! You can login now."
