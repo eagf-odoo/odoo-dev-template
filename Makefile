@@ -94,7 +94,7 @@ test-file: ## Run tests from a file. Usage: make test-file file=/mnt/extra-addon
 		--test-file $(file) \
 		--stop-after-init
 
-destroy: ## Remove all containers, networks and volumes (deletes the database)
+destroy: stop ## Remove all containers, networks and volumes (deletes the database)
 	@echo ""
 	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks and volumes."
 	@echo "  The database '$(ODOO_DB_NAME)' will be permanently deleted."
