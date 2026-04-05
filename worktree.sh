@@ -76,6 +76,10 @@ check_vault() {
     done
 }
 
+check_connectivity() {
+    nc -z -w 5 github.com 22 2>/dev/null
+}
+
 # --- Add ---------------------------------------------------------------------
 cmd_add() {
     local version="${1:-}"
@@ -93,12 +97,21 @@ cmd_add() {
     # Fetch latest refs
     echo -e "  Fetching latest refs from origin..."
     echo ""
-    for repo in "${REPOS[@]}"; do
-        echo -e "  ${BOLD}${repo}${NC}"
-        git -C "$VAULT_DIR/${repo}.git" fetch --prune origin \
-            && print_ok "fetched" \
-            || { print_error "fetch failed — check your SSH access to GitHub"; exit 1; }
-    done
+    if check_connectivity; then
+        for repo in "${REPOS[@]}"; do
+            echo -e "  ${BOLD}${repo}${NC}"
+            git -C "$VAULT_DIR/${repo}.git" fetch --prune origin \
+                && print_ok "fetched" \
+                || { print_error "fetch failed — check your SSH access to GitHub"; exit 1; }
+        done
+    else
+        print_error "Cannot reach GitHub (github.com:22 unreachable)"
+        print_info  "The worktree will be created from the current vault state."
+        echo ""
+        read -rp "  Continue without fetching? [y/N]: " offline_confirm
+        echo ""
+        [[ "$offline_confirm" =~ ^[Yy]$ ]] || { print_info "Aborted."; exit 0; }
+    fi
 
     # Create worktrees
     echo ""

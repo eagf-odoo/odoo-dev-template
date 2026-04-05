@@ -55,6 +55,11 @@ pgadmin: ## Start pgAdmin4 at http://localhost:5050
 
 init: check-worktrees ## Initialize a fresh database with the base module
 	@echo ""
+	@echo "  \033[33mWARNING\033[0m: This will drop and recreate the database '$(ODOO_DB_NAME)'."
+	@echo ""
+	@read -rp "  Are you sure? [y/N] " confirm; \
+	[ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] || { echo "  Aborted."; exit 1; }
+	@echo ""
 	@docker compose stop web > /dev/null 2>&1; true
 	@echo "  Starting database service..."
 	@docker compose up -d --wait db
@@ -76,14 +81,14 @@ init: check-worktrees ## Initialize a fresh database with the base module
 restore: ## Restore a database. Usage: make restore dump=file.dump
 	./restore.sh dumps/$(dump)
 
-upgrade: ## Upgrade Odoo modules. Usage: make upgrade modules=mod1,mod2
+upgrade: check-worktrees ## Upgrade Odoo modules. Usage: make upgrade modules=mod1,mod2
 	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		-u $(modules) \
 		--stop-after-init
 
-test: ## Run tests for modules. Usage: make test modules=sale,account
+test: check-worktrees ## Run tests for modules. Usage: make test modules=sale,account
 	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
@@ -91,14 +96,14 @@ test: ## Run tests for modules. Usage: make test modules=sale,account
 		--test-enable \
 		--stop-after-init
 
-test-tags: ## Run tests by tag. Usage: make test-tags tags=/module:Class.method
+test-tags: check-worktrees ## Run tests by tag. Usage: make test-tags tags=/module:Class.method
 	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
 		--test-tags $(tags) \
 		--stop-after-init
 
-test-file: ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py
+test-file: check-worktrees ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py
 	docker compose exec web python /mnt/reference/odoo/odoo-bin \
 		-c /etc/odoo/odoo.conf \
 		-d $(ODOO_DB_NAME) \
