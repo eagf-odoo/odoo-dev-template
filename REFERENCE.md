@@ -32,6 +32,56 @@ make destroy                             Remove all containers, networks and vol
 
 ---
 
+## Initial setup
+
+Run `setup.sh` once per machine to create the directory structure, clone the vault
+repositories, and create the initial worktrees.
+
+```bash
+bash setup.sh
+```
+
+The script is safe to re-run — existing directories and repos are skipped.
+
+### Using local donors to speed up vault cloning
+
+Cloning bare repos from GitHub can take a long time (~13 GB for `odoo` alone).
+If you already have a regular clone of a repo on your machine, you can use it as
+a **donor** — `setup.sh` will create the bare repo locally using hardlinks (instant,
+no network) and then only fetch the delta from GitHub.
+
+When the script reaches the vault cloning step, answer `y` to the donor prompt and
+provide the path to each existing clone. Leave a field empty to download that repo
+from GitHub normally.
+
+**What happens under the hood:**
+
+```bash
+# 1. Clone bare from donor using hardlinks (instant)
+git clone --bare --local ~/odoo-donor ~/Odoo/.vault/odoo.git
+
+# 2. Point the remote to GitHub
+git -C ~/Odoo/.vault/odoo.git remote set-url origin git@github.com:odoo/odoo.git
+
+# 3. Set the correct bare-repo fetch refspec
+git -C ~/Odoo/.vault/odoo.git config remote.origin.fetch "+refs/heads/*:refs/heads/*"
+
+# 4. Fetch only what's missing
+git -C ~/Odoo/.vault/odoo.git fetch --all --prune
+```
+
+> **Disk space:** The donor approach has the same final footprint as a direct
+> `--bare` clone from GitHub. Donors can be safely deleted once `setup.sh` finishes —
+> the script will offer to do this automatically.
+
+> **Common mistake:** Do not configure the fetch refspec as
+> `+refs/heads/*:refs/remotes/origin/*` (the non-bare convention). This creates two
+> conflicting sets of refs — branches from the donor land in `refs/heads/*` while
+> GitHub fetches land in `refs/remotes/origin/*`, causing worktrees to silently use
+> stale data.
+
+---
+
 ## Managing worktrees
 
 Use `worktree.sh` to add or remove Odoo source worktrees after the initial setup.

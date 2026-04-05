@@ -123,28 +123,92 @@ create_directories() {
 }
 
 # --- 3. Bare repos -----------------------------------------------------------
+USED_DONORS=()
+
+expand_path() {
+    local path="$1"
+    echo "${path/#\~/$HOME}"
+}
+
 clone_vault() {
     print_section "Cloning bare repositories into .vault/"
-    print_info "This may take a while on the first run (~2-4 GB per repo)"
     echo ""
+    print_info "If you already have local clones of these repos, you can use them"
+    print_info "as donors to avoid downloading from GitHub (saves time, same final size)."
+    print_info "Donors can be deleted after setup completes."
+    echo ""
+    read -rp "  Do you have local clones to use as donors? [y/N]: " use_donors
+    echo ""
+
+    local donor_odoo="" donor_enterprise="" donor_themes=""
+
+    if [[ "$use_donors" =~ ^[Yy]$ ]]; then
+        read -rp "  Path to odoo clone        (Enter to download from GitHub): " donor_odoo
+        read -rp "  Path to enterprise clone  (Enter to download from GitHub): " donor_enterprise
+        read -rp "  Path to design-themes clone (Enter to download from GitHub): " donor_themes
+        echo ""
+        donor_odoo=$(expand_path "$donor_odoo")
+        donor_enterprise=$(expand_path "$donor_enterprise")
+        donor_themes=$(expand_path "$donor_themes")
+    fi
 
     clone_bare() {
         local name="$1"
         local url="$2"
+        local donor="$3"
         local dest="$VAULT_DIR/${name}.git"
 
         if [ -d "$dest" ]; then
             print_skip ".vault/${name}.git"
+            return
+        fi
+
+        if [ -n "$donor" ] && [ -d "$donor" ]; then
+            echo -e "  Cloning ${BOLD}${name}${NC} from local donor..."
+            git clone --bare --local "$donor" "$dest"
+            git -C "$dest" remote set-url origin "$url"
+            git -C "$dest" config remote.origin.fetch "+refs/heads/*:refs/heads/*"
+            echo -e "  Fetching updates for ${BOLD}${name}${NC} from GitHub..."
+            git -C "$dest" fetch --all --prune
+            print_ok ".vault/${name}.git (from donor)"
+            USED_DONORS+=("$donor")
         else
-            echo -e "  Cloning ${BOLD}${name}${NC}..."
+            if [ -n "$donor" ]; then
+                print_error "Donor path not found: $donor — downloading from GitHub instead"
+            fi
+            echo -e "  Cloning ${BOLD}${name}${NC} from GitHub..."
             git clone --bare "$url" "$dest"
             print_ok ".vault/${name}.git"
         fi
     }
 
-    clone_bare "odoo"          "$ODOO_REPO"
-    clone_bare "enterprise"    "$ENTERPRISE_REPO"
-    clone_bare "design-themes" "$DESIGN_THEMES_REPO"
+    clone_bare "odoo"          "$ODOO_REPO"           "$donor_odoo"
+    clone_bare "enterprise"    "$ENTERPRISE_REPO"     "$donor_enterprise"
+    clone_bare "design-themes" "$DESIGN_THEMES_REPO"  "$donor_themes"
+}
+
+# --- 3b. Donor cleanup -------------------------------------------------------
+cleanup_donors() {
+    [ ${#USED_DONORS[@]} -eq 0 ] && return
+
+    echo ""
+    print_section "Donor cleanup"
+    print_info "The following donor repos are no longer needed:"
+    for donor in "${USED_DONORS[@]}"; do
+        echo -e "    ${YELLOW}${donor}${NC}"
+    done
+    echo ""
+    read -rp "  Delete them now to free up disk space? [y/N]: " do_cleanup
+    echo ""
+
+    if [[ "$do_cleanup" =~ ^[Yy]$ ]]; then
+        for donor in "${USED_DONORS[@]}"; do
+            rm -rf "$donor"
+            print_ok "Deleted $donor"
+        done
+    else
+        print_info "Kept — you can delete them manually when ready"
+    fi
 }
 
 # --- 4. Version selection ----------------------------------------------------
@@ -309,6 +373,7 @@ main() {
     create_worktrees
     setup_upgrade_tools
     setup_docker_images
+    cleanup_donors
     print_summary
 }
 
