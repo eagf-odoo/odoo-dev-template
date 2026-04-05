@@ -1,0 +1,22 @@
+services:
+  web:
+    volumes:
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/enterprise:/mnt/reference/enterprise:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$ODOO_DEBUG" = "true" ]; then
+          exec python3 -m debugpy --listen 0.0.0.0:5678 \
+            /mnt/reference/odoo/odoo-bin \
+            --config /etc/odoo/odoo.conf \
+            -d $$ODOO_DB_NAME \
+            $$ODOO_EXTRA_ARGS
+        else
+          exec python3 /mnt/reference/odoo/odoo-bin \
+            --config /etc/odoo/odoo.conf \
+            -d $$ODOO_DB_NAME \
+            $$ODOO_EXTRA_ARGS
+        fi

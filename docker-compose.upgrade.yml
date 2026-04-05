@@ -1,0 +1,28 @@
+services:
+  web:
+    image: odoo-dev:${ODOO_TARGET_VERSION}
+    volumes:
+      # Target version — Odoo runs from here
+      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/odoo:/opt/odoo-src/odoo:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/enterprise:/opt/odoo-src/enterprise:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_TARGET_VERSION}/design-themes:/opt/odoo-src/design-themes:ro
+      # Source version — read-only reference for comparison
+      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/odoo:/mnt/reference/odoo:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/enterprise:/mnt/reference/enterprise:ro
+      - ${ODOO_WORKTREE_PATH}/${ODOO_SOURCE_VERSION}/design-themes:/mnt/reference/design-themes:ro
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$ODOO_DEBUG" = "true" ]; then
+          exec python3 -m debugpy --listen 0.0.0.0:5678 \
+            /opt/odoo-src/odoo/odoo-bin \
+            --config /etc/odoo/odoo.upgrade.conf \
+            -d $$ODOO_DB_NAME \
+            $$ODOO_EXTRA_ARGS
+        else
+          exec python3 /opt/odoo-src/odoo/odoo-bin \
+            --config /etc/odoo/odoo.upgrade.conf \
+            -d $$ODOO_DB_NAME \
+            $$ODOO_EXTRA_ARGS
+        fi

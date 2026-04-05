@@ -44,7 +44,9 @@ cd ~/Odoo/Customers/acme
 cp .env.example .env
 ```
 
-Edit `.env` with the values for your client (version, database name, paths).
+Edit `.env` with the values for your client. Set `ODOO_MODE` to `maintenance`
+or `upgrade`, fill in the corresponding version variables, and configure paths
+and database name.
 
 > **`ODOO_VAULT_PATH` must be an absolute path.** Use `$HOME/Odoo/.vault` or the
 > equivalent — do not use `~`. Docker Compose expands tilde in the source (host)

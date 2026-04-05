@@ -11,14 +11,10 @@ services:
       - .:/workspace
       - odoo-web-data:/var/lib/odoo
       - ./config:/etc/odoo
-      # Odoo source code (read-only)
-      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/enterprise:/mnt/reference/enterprise:ro
-      - ${ODOO_WORKTREE_PATH}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
       # Custom modules
       - ${CUSTOMER_REPO}:/mnt/extra-addons
-      # Upgrade utilities (used for migration scripts)
-      - ${ODOO_UPGRADE_PATH}:/mnt/upgrade-util:ro
+      # Upgrade utilities — expected structure: Upgrade/upgrade-util/ and Upgrade/upgrade/
+      - ${ODOO_UPGRADE_PATH}:/mnt/upgrade:ro
       # Vault mounted at the same host path so git worktree symlinks resolve inside the container (required for GitLens)
       - ${ODOO_VAULT_PATH}:${ODOO_VAULT_PATH}:ro
     environment:
@@ -28,22 +24,6 @@ services:
       - ODOO_DEBUG=${ODOO_DEBUG:-true}
       - ODOO_DB_NAME=${ODOO_DB_NAME}
       - ODOO_EXTRA_ARGS=${ODOO_EXTRA_ARGS:-}
-    command:
-      - sh
-      - -c
-      - |
-        if [ "$$ODOO_DEBUG" = "true" ]; then
-          exec python3 -m debugpy --listen 0.0.0.0:5678 \
-            /mnt/reference/odoo/odoo-bin \
-            --config /etc/odoo/odoo.conf \
-            -d $$ODOO_DB_NAME \
-            $$ODOO_EXTRA_ARGS
-        else
-          exec python3 /mnt/reference/odoo/odoo-bin \
-            --config /etc/odoo/odoo.conf \
-            -d $$ODOO_DB_NAME \
-            $$ODOO_EXTRA_ARGS
-        fi
 
   db:
     image: postgres:17
@@ -61,7 +41,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # Optional service — enable with: docker compose --profile pgadmin up -d
+  # Optional service — start with: make pgadmin
   pgadmin:
     image: dpage/pgadmin4
     profiles:

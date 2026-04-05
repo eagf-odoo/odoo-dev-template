@@ -228,15 +228,35 @@ make pgadmin
 
 ## Operating mode
 
-This branch is configured for **maintenance and bugfix** work on custom modules.
-A single Odoo version (`ODOO_VERSION`) is mounted read-only at `/mnt/reference`
-and odoo-bin runs from that path. Custom module work is done in `/mnt/extra-addons`.
+The environment supports two modes, controlled by `ODOO_MODE` in your `.env`:
 
-For upgrade work (migrating custom modules between Odoo versions), use the `main`
-branch, which mounts two versions simultaneously:
+### `maintenance` (default)
 
-- **Target** (`/opt/odoo-src`) — the version being upgraded to
+Single Odoo version mounted read-only at `/mnt/reference`. Use this for custom
+module development and bugfixes on a running production version.
+
+Required `.env` variables: `ODOO_VERSION`
+
+### `upgrade`
+
+Two versions mounted simultaneously. Use this when migrating custom modules
+between Odoo versions.
+
+- **Target** (`/opt/odoo-src`) — the version being upgraded to (runs Odoo)
 - **Source** (`/mnt/reference`) — the version being upgraded from, read-only
+
+Required `.env` variables: `ODOO_SOURCE_VERSION`, `ODOO_TARGET_VERSION`
+
+### Switching modes
+
+Change `ODOO_MODE` in your `.env` and restart:
+
+```bash
+# In .env
+ODOO_MODE=upgrade
+
+make restart-all
+```
 
 ## Database initialization
 
