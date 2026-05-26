@@ -15,6 +15,15 @@ COMPOSE_FILES := -f docker-compose.yml -f docker-compose.$(ODOO_MODE).yml
 # The container always binds Odoo on 8069; this port avoids the conflict.
 ODOO_AUX_HTTP_PORT := 8071
 
+# Agent-specific overlays — appended only when running make agent
+AGENT_COMPOSE_EXTRA :=
+ifeq ($(ODOO_MODE),upgrade)
+AGENT_COMPOSE_EXTRA += -f docker-compose.upgrade.agent.yml
+endif
+ifeq ($(AGENT_CUSTOMER_ACCESS),true)
+AGENT_COMPOSE_EXTRA += -f docker-compose.agent.customer.yml
+endif
+
 # Mode-specific variables
 ifeq ($(ODOO_MODE),upgrade)
 ODOO_BIN      := /opt/odoo-src/odoo/odoo-bin
@@ -35,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-running list list-worktrees workspace help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-running list list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -65,7 +74,6 @@ check-running: check-env
 		echo ""; \
 		exit 1; \
 	fi
-
 
 check-image:
 	@if ! docker image inspect odoo-dev:$(BUILD_VERSION) > /dev/null 2>&1; then \
@@ -219,6 +227,13 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 		|| true
 	@echo ""
 
+agent: check-env ## Start the AI agent and open a Claude Code session
+	@echo ""
+	@echo "  Starting AI agent..."
+	@docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) --profile agent up -d agent
+	@echo ""
+	docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) exec agent claude
+
 reset: check-env check-worktrees ## Reset the database: drop, recreate, and install base module. Usage: make reset [demo=true]
 	@echo ""
 	@echo "  \033[33mWARNING\033[0m: This will drop and recreate the database '$(ODOO_DB_NAME)'."
@@ -314,7 +329,7 @@ destroy: check-env stop ## Remove all containers, networks and volumes (deletes 
 	@echo "  This action is irreversible."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& docker compose $(COMPOSE_FILES) --profile pgadmin down -v \
+		&& docker compose $(COMPOSE_FILES) --profile pgadmin --profile agent down -v \
 		&& rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)" \
 		|| echo "Aborted."
 	@echo ""
@@ -342,6 +357,9 @@ build: check-env ## Build the Docker image for the active version
 	docker build \
 		-t odoo-dev:$(BUILD_VERSION) \
 		$(ODOO_WORKTREE_PATH)/$(BUILD_VERSION)
+
+build-agent: ## Build the AI agent Docker image
+	docker build -f dockerfiles/agent.Dockerfile -t odoo-agent:latest .
 
 list: check-env ## List all client environments and their running status
 	@_base="$(CUSTOMERS_PATH)"; \

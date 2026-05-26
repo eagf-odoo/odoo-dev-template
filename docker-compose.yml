@@ -4,6 +4,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - odoo-net
     ports:
       - "${ODOO_PORT:-8069}:8069"
       - "${ODOO_DEBUG_PORT:-5678}:5678"
@@ -24,6 +26,8 @@ services:
 
   db:
     image: postgres:17
+    networks:
+      - odoo-net
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=odoo
@@ -43,6 +47,8 @@ services:
     image: dpage/pgadmin4
     profiles:
       - pgadmin
+    networks:
+      - odoo-net
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
@@ -60,6 +66,30 @@ services:
       retries: 10
       start_period: 30s
 
+  # Optional service — start with: make agent
+  agent:
+    image: odoo-agent:latest
+    profiles:
+      - agent
+    networks:
+      - agent-net
+    stdin_open: true
+    tty: true
+    environment:
+      - AGENT_CUSTOMER_ACCESS=${AGENT_CUSTOMER_ACCESS:-false}
+    volumes:
+      # Odoo source read-only (upgrade mode overrides this via docker-compose.upgrade.agent.yml)
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/enterprise:/mnt/reference/enterprise:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
+      # Agent state — skills, memory, MCP config (isolated from host ~/.claude)
+      - odoo-agent-data:/root/.claude
+
 volumes:
   odoo-db-data:
   odoo-pgadmin-data:
+  odoo-agent-data:
+
+networks:
+  odoo-net:
+  agent-net:
