@@ -44,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-running list list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-claude-md check-running list list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -65,6 +65,34 @@ check-env:
 		[ -n "$(ODOO_VERSION)" ] || _fail ODOO_VERSION; \
 	fi; \
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
+
+check-claude-md:
+	@_claude_file="$${CLAUDE_PATH:-$$HOME/.odoo_claude/CLAUDE.md}"; \
+	_claude_dir="$$(dirname "$$_claude_file")"; \
+	if [ ! -d "$$_claude_dir/.git" ]; then exit 0; fi; \
+	timeout 3s git -C "$$_claude_dir" fetch origin --quiet 2>/dev/null & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Checking CLAUDE.md for updates...' ;; \
+			1) printf '\r  / Checking CLAUDE.md for updates...' ;; \
+			2) printf '\r  - Checking CLAUDE.md for updates...' ;; \
+			*) printf '\r  + Checking CLAUDE.md for updates...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid" 2>/dev/null; \
+	printf '\r%-60s\r' ''; \
+	_local=$$(git -C "$$_claude_dir" rev-parse HEAD 2>/dev/null); \
+	_remote=$$(git -C "$$_claude_dir" rev-parse origin/HEAD 2>/dev/null); \
+	[ -z "$$_remote" ] && _remote=$$(git -C "$$_claude_dir" rev-parse origin/main 2>/dev/null); \
+	if [ -n "$$_local" ] && [ -n "$$_remote" ] && [ "$$_local" != "$$_remote" ]; then \
+		_behind=$$(git -C "$$_claude_dir" rev-list HEAD.."$$_remote" --count 2>/dev/null); \
+		echo ""; \
+		printf "  \033[33m⚠  CLAUDE.md is $$_behind commit(s) behind — run: git -C $$_claude_dir pull\033[0m\n"; \
+		echo ""; \
+	fi
 
 check-running: check-env
 	@if [ -z "$$(docker compose $(COMPOSE_FILES) ps -q --status running web 2>/dev/null)" ]; then \
@@ -227,7 +255,11 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 		|| true
 	@echo ""
 
+<<<<<<< HEAD
 agent: check-env ## Start the AI agent and open a Claude Code session
+=======
+agent: check-env check-agent check-claude-md ## Start the AI agent and open a Claude Code session
+>>>>>>> 0e918d7 ([IMP] agent: warn when CLAUDE.md system prompt is out of date)
 	@echo ""
 	@echo "  Starting AI agent..."
 	@docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) --profile agent up -d agent
