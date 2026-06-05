@@ -84,6 +84,8 @@ services:
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
       # Agent state — skills, memory, MCP config (isolated from host ~/.claude)
       - odoo-agent-data:/root/.claude
+      # System prompt — see https://github.com/odoo-ps/psmx-claude-md
+      - ${CLAUDE_PATH:-${HOME}/.odoo_claude/CLAUDE.md}:/root/CLAUDE.md:ro
 
 volumes:
   odoo-db-data:
