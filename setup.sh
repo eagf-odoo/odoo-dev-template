@@ -33,6 +33,8 @@ ENTERPRISE_REPO="git@github.com:odoo/enterprise.git"
 DESIGN_THEMES_REPO="git@github.com:odoo/design-themes.git"
 UPGRADE_REPO="git@github.com:odoo/upgrade.git"
 UPGRADE_UTIL_REPO="git@github.com:odoo/upgrade-util.git"
+CLAUDE_MD_REPO="git@github.com:odoo-ps/psmx-claude-md.git"
+CLAUDE_MD_DIR="$ODOO_BASE/.claude-md"
 
 # --- Versions ----------------------------------------------------------------
 LEGACY_VERSIONS=("16.0" "17.0")
@@ -305,7 +307,38 @@ setup_upgrade_tools() {
 # fail if the Docker context changes between setup and 'make start'.
 # See WORKFLOWS.md section 6 for details.
 
-# --- 8. Summary --------------------------------------------------------------
+# --- 8. CLAUDE.md system prompt (optional) -----------------------------------
+CLAUDE_MD_SETUP=false
+
+setup_claude_md() {
+  print_section "AI Agent — CLAUDE.md system prompt (optional)"
+  echo ""
+  print_info "The AI agent requires a system prompt that gives Claude context about Odoo."
+  print_info "It is installed once per machine at ~/Odoo/.claude-md/"
+  echo ""
+  read -rp "  Do you plan to use the AI agent (Claude Code)? [y/N]: " use_ai
+  echo ""
+
+  if [[ ! "$use_ai" =~ ^[Yy]$ ]]; then
+    print_info "Skipped — run setup.sh again or clone manually to enable later:"
+    echo -e "    ${CYAN}git clone $CLAUDE_MD_REPO ~/Odoo/.claude-md${NC}"
+    echo ""
+    return
+  fi
+
+  if [ -d "$CLAUDE_MD_DIR" ]; then
+    print_skip ".claude-md/ (already installed)"
+    CLAUDE_MD_SETUP=true
+    return
+  fi
+
+  echo -e "  Cloning ${BOLD}CLAUDE.md${NC} system prompt..."
+  git clone "$CLAUDE_MD_REPO" "$CLAUDE_MD_DIR"
+  print_ok ".claude-md/"
+  CLAUDE_MD_SETUP=true
+}
+
+# --- 9. Summary --------------------------------------------------------------
 print_summary() {
   echo ""
   echo -e "${BOLD}${GREEN}============================================${NC}"
@@ -326,6 +359,12 @@ print_summary() {
   echo -e "     ${CYAN}make build${NC}"
   echo -e "  4. Start the environment:"
   echo -e "     ${CYAN}make start${NC}"
+  if [ "$CLAUDE_MD_SETUP" = true ]; then
+    echo ""
+    echo -e "${BOLD}AI Agent:${NC}"
+    echo -e "  Add your Anthropic API key to .env, then run:"
+    echo -e "     ${CYAN}make agent${NC}"
+  fi
   echo ""
   echo -e "  See ${BOLD}WORKFLOWS.md${NC} for common day-to-day scenarios."
   echo ""
@@ -340,6 +379,7 @@ main() {
   select_versions
   create_worktrees
   setup_upgrade_tools
+  setup_claude_md
   cleanup_donors
   print_summary
 }

@@ -67,7 +67,7 @@ check-env:
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
 
 check-claude-md:
-	@_claude_file="$${CLAUDE_PATH:-$$HOME/.odoo_claude/CLAUDE.md}"; \
+	@_claude_file="$${CLAUDE_PATH:-$$HOME/Odoo/.claude-md/CLAUDE.md}"; \
 	_claude_dir="$$(dirname "$$_claude_file")"; \
 	if [ ! -d "$$_claude_dir/.git" ]; then exit 0; fi; \
 	timeout 3s git -C "$$_claude_dir" fetch origin --quiet 2>/dev/null & \

@@ -85,7 +85,7 @@ services:
       # Agent state — skills, memory, MCP config (isolated from host ~/.claude)
       - odoo-agent-data:/root/.claude
       # System prompt — see https://github.com/odoo-ps/psmx-claude-md
-      - ${CLAUDE_PATH:-${HOME}/.odoo_claude/CLAUDE.md}:/root/CLAUDE.md:ro
+      - ${CLAUDE_PATH:-${HOME}/Odoo/.claude-md/CLAUDE.md}:/root/CLAUDE.md:ro
       # Writable staging area — Claude writes generated code here for developer review
       - ./agent-output:/workspace/output:rw
 
