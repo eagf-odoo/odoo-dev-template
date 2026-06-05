@@ -86,6 +86,8 @@ services:
       - odoo-agent-data:/root/.claude
       # System prompt — see https://github.com/odoo-ps/psmx-claude-md
       - ${CLAUDE_PATH:-${HOME}/.odoo_claude/CLAUDE.md}:/root/CLAUDE.md:ro
+      # Writable staging area — Claude writes generated code here for developer review
+      - ./agent-output:/workspace/output:rw
 
 volumes:
   odoo-db-data:
