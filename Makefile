@@ -69,6 +69,15 @@ check-env:
 check-claude-md:
 	@_claude_file="$${CLAUDE_PATH:-$$HOME/Odoo/.claude-md/CLAUDE.md}"; \
 	_claude_dir="$$(dirname "$$_claude_file")"; \
+	if [ ! -f "$$_claude_file" ]; then \
+		echo ""; \
+		echo "  \033[31mError: CLAUDE.md system prompt not found at $$_claude_file\033[0m"; \
+		echo ""; \
+		echo "  Option 1 (recommended):  re-run setup.sh — it skips what's already installed"; \
+		echo "  Option 2 (manual):       git clone git@github.com:odoo-ps/psmx-claude-md.git ~/Odoo/.claude-md"; \
+		echo ""; \
+		exit 1; \
+	fi; \
 	if [ ! -d "$$_claude_dir/.git" ]; then exit 0; fi; \
 	timeout 3s git -C "$$_claude_dir" fetch origin --quiet 2>/dev/null & \
 	_pid=$$!; _i=0; \
