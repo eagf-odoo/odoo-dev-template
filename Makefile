@@ -44,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-claude-md check-running list list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -65,6 +65,16 @@ check-env:
 		[ -n "$(ODOO_VERSION)" ] || _fail ODOO_VERSION; \
 	fi; \
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
+
+check-agent-image:
+	@if ! docker image inspect odoo-agent:latest > /dev/null 2>&1; then \
+		echo ""; \
+		printf "  Building agent image for the first time...\n"; \
+		docker build -f dockerfiles/agent.Dockerfile -t odoo-agent:latest . \
+			&& printf "  \033[32m✓ Agent image ready.\033[0m\n" \
+			|| { echo ""; echo "  \033[31mFailed to build the agent image.\033[0m"; echo ""; exit 1; }; \
+		echo ""; \
+	fi
 
 check-claude-md:
 	@_claude_file="$${CLAUDE_PATH:-$$HOME/Odoo/.claude-md/CLAUDE.md}"; \
@@ -113,6 +123,13 @@ check-running: check-env
 	fi
 
 check-image:
+	@if ! docker info > /dev/null 2>&1; then \
+		echo ""; \
+		echo "  \033[31mError: Docker is not running.\033[0m"; \
+		echo "  Start Docker Desktop and try again."; \
+		echo ""; \
+		exit 1; \
+	fi
 	@if ! docker image inspect odoo-dev:$(BUILD_VERSION) > /dev/null 2>&1; then \
 		if [ -n "$$(docker images --filter reference=odoo-dev:$(BUILD_VERSION) --format '{{.ID}}')" ]; then \
 			printf "  \033[33mDocker Desktop reinitialized — re-registering image (cache)...\033[0m\n"; \
@@ -264,11 +281,7 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 		|| true
 	@echo ""
 
-<<<<<<< HEAD
-agent: check-env ## Start the AI agent and open a Claude Code session
-=======
-agent: check-env check-agent check-claude-md ## Start the AI agent and open a Claude Code session
->>>>>>> 0e918d7 ([IMP] agent: warn when CLAUDE.md system prompt is out of date)
+agent: check-env check-agent-image check-claude-md ## Start the AI agent and open a Claude Code session
 	@echo ""
 	@echo "  Starting AI agent..."
 	@docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) --profile agent up -d agent

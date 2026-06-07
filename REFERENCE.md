@@ -424,71 +424,26 @@ Option 1 is instant. Option 2 rebuilds the image in the current context (preferr
 
 ## AI Agent
 
-An optional Claude Code container that can see the Odoo source code read-only and assist with
-development and upgrade tasks, without access to the database, customer data, or internal network.
+See [AGENT.md](AGENT.md) for full documentation on the AI agent and available tools.
 
-### Prerequisites
+### System prompt (CLAUDE.md)
 
-1. Build the agent image (once per machine):
+`make agent` runs `check-claude-md` before starting. If `CLAUDE.md` is missing it
+exits with instructions to re-run `setup.sh` (which clones the prompt repo) or to
+clone it manually. If the file exists but the repo has unpulled commits, a warning
+is printed — the session still starts but the prompt may be out of date.
 
-```bash
-make build-agent
-```
+### Customer code access
 
-2. Add your Anthropic API key to `.env`:
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-### Starting a session
-
-```bash
-make agent
-```
-
-This starts the agent container (if not already running) and opens a Claude Code session directly
-in your terminal. When you exit Claude, the container keeps running in the background.
-
-### What the agent can see
-
-| Path in container | Contents | Mode |
-|---|---|---|
-| `/mnt/reference/odoo` | Odoo community source | development |
-| `/mnt/reference/enterprise` | Odoo enterprise source | development |
-| `/mnt/reference/design-themes` | Odoo design-themes source | development |
-| `/mnt/reference/source/{odoo,enterprise,design-themes}` | Source version (FROM) | upgrade |
-| `/mnt/reference/target/{odoo,enterprise,design-themes}` | Target version (TO) | upgrade |
-| `/mnt/customer` | Customer modules | only if AGENT_CUSTOMER_ACCESS=true |
-
-The agent has **no network route** to `web` (Odoo) or `db` (PostgreSQL). It can only reach
-`api.anthropic.com` to process requests.
-
-### Upgrade mode
-
-In `ODOO_MODE=upgrade`, `make agent` automatically mounts both the source and target versions
-of Odoo so the agent can compare APIs, models, and views across versions:
+By default the customer's module code is **not** mounted in the agent container.
+To enable it, set in `.env`:
 
 ```
-"How did account.move change between 17.0 and 18.0?"
-"What's the equivalent of this deprecated API in the target version?"
-"Help me write the migration script for this field."
-```
-
-### Customer code access (opt-in)
-
-By default, the customer's module code is not mounted. To enable it, the client must contractually
-approve the use of AI on their code (since it will be sent to Anthropic's API). Then set in `.env`:
-
-```bash
 AGENT_CUSTOMER_ACCESS=true
 ```
 
-### Agent state persistence
-
-The agent's skills, memory, and MCP configuration are stored in the `odoo-agent-data` Docker volume.
-This volume is isolated from `~/.claude/` on the host — the agent starts fresh on a new machine and
-persists its state between sessions on the same machine.
+**Important:** only enable this after the client has contractually approved the use
+of AI tooling on their code. Enabling it sends their source to Anthropic's API.
 
 ---
 
