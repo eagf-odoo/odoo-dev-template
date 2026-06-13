@@ -44,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -242,7 +242,7 @@ start: check-env check-worktrees check-image check-ports workspace check-version
 	fi
 
 stop: check-env ## Stop the environment
-	docker compose $(COMPOSE_FILES) --profile pgadmin down
+	docker compose $(COMPOSE_FILES) --profile pgadmin --profile agent down
 
 restart: check-env ## Restart the Odoo server (keeps the database running)
 	docker compose $(COMPOSE_FILES) restart web
@@ -378,13 +378,29 @@ test-file: check-running check-worktrees ## Run tests from a file. Usage: make t
 
 destroy: check-env stop ## Remove all containers, networks and volumes (deletes the database)
 	@echo ""
-	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks, volumes,"
+	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks, and Odoo volumes,"
 	@echo "  and the Odoo data directory for '$(ODOO_DB_NAME)'."
+	@echo "  The AI agent volume (skills, session) is preserved. Use 'make reset-agent' to clear it."
 	@echo "  This action is irreversible."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& docker compose $(COMPOSE_FILES) --profile pgadmin --profile agent down -v \
+		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
+		&& docker volume rm --force \
+			$(COMPOSE_PROJECT_NAME)_odoo-db-data \
+			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true \
 		&& rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)" \
+		|| echo "Aborted."
+	@echo ""
+
+reset-agent: ## Remove the AI agent volume (clears session, skills, and memory)
+	@echo ""
+	@echo "  \033[33mWARNING\033[0m: This will remove the agent volume — you will need to"
+	@echo "  re-authenticate with claude.ai on the next 'make agent' run."
+	@echo ""
+	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
+		&& docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-agent-data \
+		&& echo "" \
+		&& echo "  \033[32m✓ Agent volume removed.\033[0m" \
 		|| echo "Aborted."
 	@echo ""
 
