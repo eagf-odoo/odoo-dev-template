@@ -118,6 +118,12 @@ expand_path() {
 
 clone_vault() {
   print_section "Cloning bare repositories into .vault/"
+
+  if [ -d "$VAULT_DIR/odoo.git" ] && [ -d "$VAULT_DIR/enterprise.git" ] && [ -d "$VAULT_DIR/design-themes.git" ]; then
+    print_skip "All vault repos already present"
+    return
+  fi
+
   echo ""
   print_info "If you already have local clones of these repos, you can use them"
   print_info "as donors to avoid downloading from GitHub (saves time, same final size)."
@@ -206,6 +212,25 @@ cleanup_donors() {
 # --- 4. Version selection ----------------------------------------------------
 select_versions() {
   print_section "Select versions to install"
+
+  # Auto-detect existing worktrees on re-run — skip the prompt
+  local existing_versions=()
+  for version in "${ALL_VERSIONS[@]}"; do
+    if [ -d "$WORKTREES_DIR/$version/odoo" ]; then
+      existing_versions+=("$version")
+    fi
+  done
+
+  if [ ${#existing_versions[@]} -gt 0 ]; then
+    SELECTED_VERSIONS=("${existing_versions[@]}")
+    for version in "${SELECTED_VERSIONS[@]}"; do
+      print_skip "Worktrees/$version (already installed)"
+    done
+    print_info "To add a new version: make worktree-add VERSION=X.0"
+    return
+  fi
+
+  # First run — ask for version selection
   echo ""
   echo -e "  Available versions:"
   echo ""
@@ -312,6 +337,13 @@ CLAUDE_MD_SETUP=false
 
 setup_claude_md() {
   print_section "AI Agent — CLAUDE.md system prompt (optional)"
+
+  if [ -d "$CLAUDE_MD_DIR" ]; then
+    print_skip ".claude-md/ (already installed)"
+    CLAUDE_MD_SETUP=true
+    return
+  fi
+
   echo ""
   print_info "The AI agent requires a system prompt that gives Claude context about Odoo."
   print_info "It is installed once per machine at ~/Odoo/.claude-md/"
@@ -323,12 +355,6 @@ setup_claude_md() {
     print_info "Skipped — run setup.sh again or clone manually to enable later:"
     echo -e "    ${CYAN}git clone $CLAUDE_MD_REPO ~/Odoo/.claude-md${NC}"
     echo ""
-    return
-  fi
-
-  if [ -d "$CLAUDE_MD_DIR" ]; then
-    print_skip ".claude-md/ (already installed)"
-    CLAUDE_MD_SETUP=true
     return
   fi
 
