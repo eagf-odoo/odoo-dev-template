@@ -82,8 +82,8 @@ services:
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/enterprise:/mnt/reference/enterprise:ro
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/design-themes:/mnt/reference/design-themes:ro
-      # Agent state — skills, memory, MCP config (isolated from host ~/.claude)
-      - odoo-agent-data:/root/.claude
+      # Agent state — global per developer, shared across all client projects
+      - ${HOME}/.odoo-agent:/root/.claude
       # System prompt — see https://github.com/odoo-ps/psmx-claude-md
       - ${CLAUDE_PATH:-${HOME}/Odoo/.claude-md/CLAUDE.md}:/root/CLAUDE.md:ro
       # Writable staging area — Claude writes generated code here for developer review
@@ -92,7 +92,6 @@ services:
 volumes:
   odoo-db-data:
   odoo-pgadmin-data:
-  odoo-agent-data:
 
 networks:
   odoo-net:

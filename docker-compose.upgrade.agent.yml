@@ -7,4 +7,4 @@ services:
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/odoo:/mnt/reference/target/odoo:ro
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/enterprise:/mnt/reference/target/enterprise:ro
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/design-themes:/mnt/reference/target/design-themes:ro
-      - odoo-agent-data:/root/.claude
+      - ${HOME}/.odoo-agent:/root/.claude

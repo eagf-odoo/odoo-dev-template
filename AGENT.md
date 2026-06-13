@@ -57,9 +57,18 @@ AGENT_CUSTOMER_ACCESS=true
 
 ## Agent state persistence
 
-The agent's skills and memory are stored in the `odoo-agent-data` Docker volume. This volume is
-isolated from `~/.claude/` on the host — the agent starts fresh on a new machine and persists its
-state between sessions on the same machine.
+The agent's skills, memory, and claude.ai session are stored in `~/.odoo-agent/` on the host.
+This directory is shared across all client projects on the same machine — authentication and
+learned context carry over automatically between projects.
+
+It is intentionally separate from `~/.claude/` so the agent's Odoo-specific state does not
+interfere with other Claude Code sessions on the host.
+
+To reset the agent state completely (forces re-authentication):
+
+```bash
+make reset-agent
+```
 
 ## Rebuilding the agent image
 

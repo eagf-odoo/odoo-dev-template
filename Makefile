@@ -392,15 +392,16 @@ destroy: check-env stop ## Remove all containers, networks and volumes (deletes 
 		|| echo "Aborted."
 	@echo ""
 
-reset-agent: ## Remove the AI agent volume (clears session, skills, and memory)
+reset-agent: ## Remove the agent state directory (clears session, skills, and memory across all projects)
 	@echo ""
-	@echo "  \033[33mWARNING\033[0m: This will remove the agent volume — you will need to"
+	@echo "  \033[33mWARNING\033[0m: This will remove ~/.odoo-agent — you will need to"
 	@echo "  re-authenticate with claude.ai on the next 'make agent' run."
+	@echo "  This affects ALL client projects on this machine."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-agent-data \
+		&& rm -rf $(HOME)/.odoo-agent \
 		&& echo "" \
-		&& echo "  \033[32m✓ Agent volume removed.\033[0m" \
+		&& echo "  \033[32m✓ Agent state removed.\033[0m" \
 		|| echo "Aborted."
 	@echo ""
 
