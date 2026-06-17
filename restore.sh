@@ -57,31 +57,29 @@ if [[ "$FILE" == *.zip ]]; then
     WORK_DIR=$(mktemp -d /tmp/odoo-restore.XXXXXX)
     trap 'rm -rf "$WORK_DIR"' EXIT
 
-    run_with_spinner "Extracting ${FILE}..." \
-        unzip -q "$HOST_FILE" -d "$WORK_DIR" \
-        || { print_error "Failed to extract ${FILE}. Is it a valid Odoo backup?"; exit 1; }
+    # Fail fast if zip doesn't contain dump.sql
+    unzip -l "$HOST_FILE" | grep -q "dump.sql" \
+        || { print_error "No dump.sql found inside ${FILE}. Is it a valid Odoo backup?"; exit 1; }
 
-    SQL_FILE=$(find "$WORK_DIR" -maxdepth 1 -name "dump.sql" | head -1)
-    if [ -z "$SQL_FILE" ]; then
-        print_error "No dump.sql found inside ${FILE}."
-        exit 1
-    fi
-
-    docker compose "${COMPOSE_FILES[@]}" cp "$SQL_FILE" db:/tmp/odoo-restore.sql >/dev/null 2>&1
-
+    # Stream dump.sql directly into psql — no intermediate files on disk
     run_with_spinner "Restoring ${FILE}..." \
-        docker compose "${COMPOSE_FILES[@]}" exec -T db \
-            psql -U odoo -d "$TARGET_DB" -q -f /tmp/odoo-restore.sql \
+        bash -c "set -o pipefail; unzip -p \"$HOST_FILE\" dump.sql | \
+            docker compose ${COMPOSE_FILES[*]} exec -T db \
+                psql -U odoo -d \"$TARGET_DB\" -q" \
         || { print_error "Restore failed — check the dump file."; exit 1; }
 
-    docker compose "${COMPOSE_FILES[@]}" exec -T db rm -f /tmp/odoo-restore.sql >/dev/null 2>&1
-
-    FILESTORE_SRC="$WORK_DIR/filestore"
-    if [ -d "$FILESTORE_SRC" ] && [ -n "$(ls -A "$FILESTORE_SRC" 2>/dev/null)" ]; then
-        TARGET="$HOME/Odoo/.data/$TARGET_DB/filestore/$TARGET_DB"
-        run_with_spinner "Installing filestore..." \
-            bash -c "rm -rf \"$TARGET\" && mkdir -p \"$(dirname "$TARGET")\" && mv \"$FILESTORE_SRC\" \"$TARGET\""
-        print_ok "Filestore installed."
+    # Extract filestore only if present — dump.sql never hits disk
+    FILESTORE_IN_ZIP=$(unzip -l "$HOST_FILE" | grep -c "filestore/" || true)
+    if [ "$FILESTORE_IN_ZIP" -gt 0 ]; then
+        run_with_spinner "Extracting filestore..." \
+            unzip -q "$HOST_FILE" "filestore/*" -d "$WORK_DIR" 2>/dev/null || true
+        FILESTORE_SRC="$WORK_DIR/filestore"
+        if [ -d "$FILESTORE_SRC" ] && [ -n "$(ls -A "$FILESTORE_SRC" 2>/dev/null)" ]; then
+            TARGET="$HOME/Odoo/.data/$TARGET_DB/filestore/$TARGET_DB"
+            run_with_spinner "Installing filestore..." \
+                bash -c "rm -rf \"$TARGET\" && mkdir -p \"$(dirname "$TARGET")\" && mv \"$FILESTORE_SRC\" \"$TARGET\""
+            print_ok "Filestore installed."
+        fi
     fi
 elif [[ "$FILE" == *.dump ]]; then
     run_with_spinner "Restoring ${FILE}..." \
