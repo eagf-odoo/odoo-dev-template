@@ -242,7 +242,7 @@ start: check-env check-worktrees check-image check-ports workspace check-version
 	fi
 
 stop: check-env ## Stop the environment
-	docker compose $(COMPOSE_FILES) --profile pgadmin --profile agent down
+	docker compose $(COMPOSE_FILES) --profile pgadmin down
 
 restart: check-env ## Restart the Odoo server (keeps the database running)
 	docker compose $(COMPOSE_FILES) restart web
@@ -282,11 +282,7 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 	@echo ""
 
 agent: check-env check-agent-image check-claude-md ## Start the AI agent and open a Claude Code session
-	@echo ""
-	@echo "  Starting AI agent..."
-	@docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) --profile agent up -d agent
-	@echo ""
-	docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) exec agent claude
+	docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) run --rm agent
 
 reset: check-env check-worktrees ## Reset the database: drop, recreate, and install base module. Usage: make reset [demo=true]
 	@echo ""

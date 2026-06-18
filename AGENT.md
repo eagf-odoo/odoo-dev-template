@@ -17,8 +17,7 @@ make agent
 On the first run the agent image is built automatically and you will be prompted to log in
 with your claude.ai account. Subsequent runs start in seconds.
 
-When you exit Claude (`/exit`), the container keeps running in the background.
-To stop it, run `make stop` (this also stops Odoo and pgAdmin if running).
+When you exit Claude (`/exit`), the container is removed automatically.
 
 ## What the agent can see
 

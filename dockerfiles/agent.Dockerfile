@@ -16,4 +16,4 @@ RUN pip3 install --break-system-packages \
 
 WORKDIR /workspace
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["claude"]
