@@ -3,22 +3,22 @@
 An optional Claude Code container that can see the Odoo source code read-only and assist with
 development and upgrade tasks, without access to the database, customer data, or internal network.
 
+## Prerequisites
+
+A [claude.ai](https://claude.ai) account with a **Pro or Max** subscription is required.
+No Anthropic API key is needed — authentication is handled via OAuth login.
+
 ## Starting a session
-
-Add your Anthropic API key to `.env` (or export it once in `~/.zshrc` to reuse across projects):
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-Then:
 
 ```bash
 make agent
 ```
 
-On the first run the agent image is built automatically. Subsequent runs start in seconds.
-When you exit Claude, the container keeps running in the background.
+On the first run the agent image is built automatically and you will be prompted to log in
+with your claude.ai account. Subsequent runs start in seconds.
+
+When you exit Claude (`/exit`), the container keeps running in the background.
+To stop it, run `make stop` (this also stops Odoo and pgAdmin if running).
 
 ## What the agent can see
 
@@ -57,17 +57,31 @@ AGENT_CUSTOMER_ACCESS=true
 
 ## Agent state persistence
 
-The agent's skills, memory, and claude.ai session are stored in `~/.odoo-agent/` on the host.
-This directory is shared across all client projects on the same machine — authentication and
-learned context carry over automatically between projects.
+The agent's claude.ai session and Claude Code state are stored in `~/.odoo-agent/` on the host.
+This directory is shared across all client projects on the same machine — authentication carries
+over automatically, so you only log in once per machine.
 
-It is intentionally separate from `~/.claude/` so the agent's Odoo-specific state does not
-interfere with other Claude Code sessions on the host.
+**What persists between sessions:** authentication, installed skills, Claude Code configuration.
 
-To reset the agent state completely (forces re-authentication):
+**What does not persist:** conversation context. Each `make agent` invocation starts a fresh
+conversation. To resume a previous one, use `/resume` inside Claude Code after starting.
+
+The state directory is intentionally separate from `~/.claude/` to avoid interfering with
+other Claude Code sessions on the host.
+
+To reset the agent state completely (forces re-authentication on next run):
 
 ```bash
 make reset-agent
+```
+
+## Custom CLAUDE.md location
+
+By default the agent loads the system prompt from `~/Odoo/.claude-md/CLAUDE.md`.
+If your `psmx-claude-md` clone lives elsewhere, set `CLAUDE_PATH` in `.env`:
+
+```bash
+CLAUDE_PATH=~/path/to/your/CLAUDE.md
 ```
 
 ## Rebuilding the agent image
