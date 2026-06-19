@@ -71,8 +71,9 @@ check-image:
 	@if ! docker image inspect odoo-dev:$(BUILD_VERSION) > /dev/null 2>&1; then \
 		if [ -n "$$(docker images --filter reference=odoo-dev:$(BUILD_VERSION) --format '{{.ID}}')" ]; then \
 			printf "  \033[33mDocker Desktop reinitialized — re-registering image (cache)...\033[0m\n"; \
-			docker build -t odoo-dev:$(BUILD_VERSION) $(ODOO_WORKTREE_PATH)/$(BUILD_VERSION) > /dev/null 2>&1 \
-				&& printf "  \033[32m✓ Image re-registered.\033[0m\n" \
+			printf "  (This may take a minute if the cache is cold — output shown below)\n\n"; \
+			docker build --progress=plain -t odoo-dev:$(BUILD_VERSION) $(ODOO_WORKTREE_PATH)/$(BUILD_VERSION) \
+				&& printf "\n  \033[32m✓ Image re-registered.\033[0m\n" \
 				|| { echo ""; echo "  \033[31mFailed to re-register. Run: make build\033[0m"; echo ""; exit 1; }; \
 		else \
 			echo ""; \
