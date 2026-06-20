@@ -67,6 +67,7 @@ check-env:
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
 
 check-agent-image:
+	@touch $(HOME)/.odoo-agent.json
 	@if ! docker image inspect odoo-agent:latest > /dev/null 2>&1; then \
 		echo ""; \
 		printf "  Building agent image for the first time...\n"; \
@@ -391,12 +392,12 @@ destroy: check-env stop ## Remove all containers, networks and volumes (deletes 
 
 reset-agent: ## Remove the agent state directory (clears session, skills, and memory across all projects)
 	@echo ""
-	@echo "  \033[33mWARNING\033[0m: This will remove ~/.odoo-agent — you will need to"
+	@echo "  \033[33mWARNING\033[0m: This will remove ~/.odoo-agent and ~/.odoo-agent.json — you will need to"
 	@echo "  re-authenticate with claude.ai on the next 'make agent' run."
 	@echo "  This affects ALL client projects on this machine."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& rm -rf $(HOME)/.odoo-agent \
+		&& rm -rf $(HOME)/.odoo-agent $(HOME)/.odoo-agent.json \
 		&& echo "" \
 		&& echo "  \033[32m✓ Agent state removed.\033[0m" \
 		|| echo "Aborted."
