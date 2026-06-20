@@ -67,7 +67,7 @@ check-env:
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
 
 check-agent-image:
-	@touch $(HOME)/.odoo-agent.json
+	@[ -f $(HOME)/.odoo-agent.json ] && [ -s $(HOME)/.odoo-agent.json ] || printf '{}' > $(HOME)/.odoo-agent.json
 	@if ! docker image inspect odoo-agent:latest > /dev/null 2>&1; then \
 		echo ""; \
 		printf "  Building agent image for the first time...\n"; \
