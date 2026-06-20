@@ -77,6 +77,7 @@ services:
     tty: true
     environment:
       - AGENT_CUSTOMER_ACCESS=${AGENT_CUSTOMER_ACCESS:-false}
+      - DISABLE_UPDATES=1
     volumes:
       # Odoo source read-only (upgrade mode overrides this via docker-compose.upgrade.agent.yml)
       - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_VERSION}/odoo:/mnt/reference/odoo:ro
