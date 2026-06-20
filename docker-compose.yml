@@ -86,7 +86,7 @@ services:
       # Agent state — global per developer, shared across all client projects
       - ${HOME}/.odoo-agent:/root/.claude
       # System prompt — see https://github.com/odoo-ps/psmx-claude-md
-      - ${CLAUDE_PATH:-${HOME}/Odoo/.claude-md/CLAUDE.md}:/root/CLAUDE.md:ro
+      - ${CLAUDE_PATH:-${HOME}/Odoo/.claude-md/CLAUDE.md}:/workspace/CLAUDE.md:ro
       # Writable staging area — Claude writes generated code here for developer review
       - ./agent-output:/workspace/output:rw
 
