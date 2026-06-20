@@ -15,6 +15,15 @@ COMPOSE_FILES := -f docker-compose.yml -f docker-compose.$(ODOO_MODE).yml
 # The container always binds Odoo on 8069; this port avoids the conflict.
 ODOO_AUX_HTTP_PORT := 8071
 
+# Agent-specific overlays — appended only when running make agent
+AGENT_COMPOSE_EXTRA :=
+ifeq ($(ODOO_MODE),upgrade)
+AGENT_COMPOSE_EXTRA += -f docker-compose.upgrade.agent.yml
+endif
+ifeq ($(AGENT_CUSTOMER_ACCESS),true)
+AGENT_COMPOSE_EXTRA += -f docker-compose.agent.customer.yml
+endif
+
 # Mode-specific variables
 ifeq ($(ODOO_MODE),upgrade)
 ODOO_BIN      := /opt/odoo-src/odoo/odoo-bin
@@ -35,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build destroy pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-running list list-worktrees workspace help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -57,6 +66,53 @@ check-env:
 	fi; \
 	[ "$$ok" = "1" ] || { echo ""; echo "  Fix the above before running make."; echo ""; exit 1; }
 
+check-agent-image:
+	@if ! docker image inspect odoo-agent:latest > /dev/null 2>&1; then \
+		echo ""; \
+		printf "  Building agent image for the first time...\n"; \
+		docker build -f dockerfiles/agent.Dockerfile -t odoo-agent:latest . \
+			&& printf "  \033[32m✓ Agent image ready.\033[0m\n" \
+			|| { echo ""; echo "  \033[31mFailed to build the agent image.\033[0m"; echo ""; exit 1; }; \
+		echo ""; \
+	fi
+
+check-claude-md:
+	@_claude_file="$${CLAUDE_PATH:-$$HOME/Odoo/.claude-md/CLAUDE.md}"; \
+	_claude_dir="$$(dirname "$$_claude_file")"; \
+	if [ ! -f "$$_claude_file" ]; then \
+		echo ""; \
+		echo "  \033[31mError: CLAUDE.md system prompt not found at $$_claude_file\033[0m"; \
+		echo ""; \
+		echo "  Option 1 (recommended):  re-run setup.sh — it skips what's already installed"; \
+		echo "  Option 2 (manual):       git clone git@github.com:odoo-ps/psmx-claude-md.git ~/Odoo/.claude-md"; \
+		echo ""; \
+		exit 1; \
+	fi; \
+	if [ ! -d "$$_claude_dir/.git" ]; then exit 0; fi; \
+	timeout 3s git -C "$$_claude_dir" fetch origin --quiet 2>/dev/null & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Checking CLAUDE.md for updates...' ;; \
+			1) printf '\r  / Checking CLAUDE.md for updates...' ;; \
+			2) printf '\r  - Checking CLAUDE.md for updates...' ;; \
+			*) printf '\r  + Checking CLAUDE.md for updates...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid" 2>/dev/null; \
+	printf '\r%-60s\r' ''; \
+	_local=$$(git -C "$$_claude_dir" rev-parse HEAD 2>/dev/null); \
+	_remote=$$(git -C "$$_claude_dir" rev-parse origin/HEAD 2>/dev/null); \
+	[ -z "$$_remote" ] && _remote=$$(git -C "$$_claude_dir" rev-parse origin/main 2>/dev/null); \
+	if [ -n "$$_local" ] && [ -n "$$_remote" ] && [ "$$_local" != "$$_remote" ]; then \
+		_behind=$$(git -C "$$_claude_dir" rev-list HEAD.."$$_remote" --count 2>/dev/null); \
+		echo ""; \
+		printf "  \033[33m⚠  CLAUDE.md is $$_behind commit(s) behind — run: git -C $$_claude_dir pull\033[0m\n"; \
+		echo ""; \
+	fi
+
 check-running: check-env
 	@if [ -z "$$(docker compose $(COMPOSE_FILES) ps -q --status running web 2>/dev/null)" ]; then \
 		echo ""; \
@@ -66,8 +122,14 @@ check-running: check-env
 		exit 1; \
 	fi
 
-
 check-image:
+	@if ! docker info > /dev/null 2>&1; then \
+		echo ""; \
+		echo "  \033[31mError: Docker is not running.\033[0m"; \
+		echo "  Start Docker Desktop and try again."; \
+		echo ""; \
+		exit 1; \
+	fi
 	@if ! docker image inspect odoo-dev:$(BUILD_VERSION) > /dev/null 2>&1; then \
 		if [ -n "$$(docker images --filter reference=odoo-dev:$(BUILD_VERSION) --format '{{.ID}}')" ]; then \
 			printf "  \033[33mDocker Desktop reinitialized — re-registering image (cache)...\033[0m\n"; \
@@ -220,6 +282,9 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 		|| true
 	@echo ""
 
+agent: check-env check-agent-image check-claude-md ## Start the AI agent and open a Claude Code session
+	docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) run --rm agent
+
 reset: check-env check-worktrees ## Reset the database: drop, recreate, and install base module. Usage: make reset [demo=true]
 	@echo ""
 	@echo "  \033[33mWARNING\033[0m: This will drop and recreate the database '$(ODOO_DB_NAME)'."
@@ -310,13 +375,30 @@ test-file: check-running check-worktrees ## Run tests from a file. Usage: make t
 
 destroy: check-env stop ## Remove all containers, networks and volumes (deletes the database)
 	@echo ""
-	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks, volumes,"
+	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks, and Odoo volumes,"
 	@echo "  and the Odoo data directory for '$(ODOO_DB_NAME)'."
+	@echo "  The AI agent volume (skills, session) is preserved. Use 'make reset-agent' to clear it."
 	@echo "  This action is irreversible."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& docker compose $(COMPOSE_FILES) --profile pgadmin down -v \
+		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
+		&& docker volume rm --force \
+			$(COMPOSE_PROJECT_NAME)_odoo-db-data \
+			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true \
 		&& rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)" \
+		|| echo "Aborted."
+	@echo ""
+
+reset-agent: ## Remove the agent state directory (clears session, skills, and memory across all projects)
+	@echo ""
+	@echo "  \033[33mWARNING\033[0m: This will remove ~/.odoo-agent — you will need to"
+	@echo "  re-authenticate with claude.ai on the next 'make agent' run."
+	@echo "  This affects ALL client projects on this machine."
+	@echo ""
+	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
+		&& rm -rf $(HOME)/.odoo-agent \
+		&& echo "" \
+		&& echo "  \033[32m✓ Agent state removed.\033[0m" \
 		|| echo "Aborted."
 	@echo ""
 
@@ -343,6 +425,9 @@ build: check-env ## Build the Docker image for the active version
 	docker build \
 		-t odoo-dev:$(BUILD_VERSION) \
 		$(ODOO_WORKTREE_PATH)/$(BUILD_VERSION)
+
+build-agent: ## Build the AI agent Docker image
+	docker build -f dockerfiles/agent.Dockerfile -t odoo-agent:latest .
 
 list: check-env ## List all client environments and their running status
 	@_base="$(CUSTOMERS_PATH)"; \

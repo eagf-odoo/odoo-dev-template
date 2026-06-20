@@ -29,6 +29,7 @@ make psql [db=other_name]                           Open a psql shell (default: 
 make extract src=<path> [dest=.]                    Extract a file from the db container to the host
 make ps                                             Show container status
 make build                                          Build the Docker image for ODOO_VERSION
+make build-agent                                    Build the AI agent Docker image
 make reset [demo=true]                              Reset the database: drop, recreate, and install base module
 make restore dump=<file> [db=<name>]                Restore a database from ~/Odoo/Dumps/ (.zip, .dump, or .sql)
 make update modules=mod1,mod2                       Update Odoo modules
@@ -36,6 +37,7 @@ make test modules=mod1,mod2 [demo=true]             Update modules and run Odoo 
 make test-tags tags=/mod:Class.method [demo=true]   Run tests matching a tag, class or method
 make test-file file=/path/to/test.py [demo=true]    Run tests from a specific file
 make pgadmin                                        Start pgAdmin4 at http://localhost:${PGADMIN_PORT:-5050}
+make agent                                          Start the AI agent and open a Claude Code session
 make list                                           List all client environments and their running status
 make list-worktrees                                 List available worktrees (active one highlighted)
 make worktree                                       Open the interactive worktree manager
@@ -417,6 +419,31 @@ Option 2: rebuild here   →  make build
 ```
 
 Option 1 is instant. Option 2 rebuilds the image in the current context (preferred if you want to stay on `desktop-linux`).
+
+---
+
+## AI Agent
+
+See [AGENT.md](AGENT.md) for full documentation on the AI agent and available tools.
+
+### System prompt (CLAUDE.md)
+
+`make agent` runs `check-claude-md` before starting. If `CLAUDE.md` is missing it
+exits with instructions to re-run `setup.sh` (which clones the prompt repo) or to
+clone it manually. If the file exists but the repo has unpulled commits, a warning
+is printed — the session still starts but the prompt may be out of date.
+
+### Customer code access
+
+By default the customer's module code is **not** mounted in the agent container.
+To enable it, set in `.env`:
+
+```
+AGENT_CUSTOMER_ACCESS=true
+```
+
+**Important:** only enable this after the client has contractually approved the use
+of AI tooling on their code. Enabling it sends their source to Anthropic's API.
 
 ---
 

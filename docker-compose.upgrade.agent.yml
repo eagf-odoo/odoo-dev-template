@@ -1,0 +1,10 @@
+services:
+  agent:
+    volumes:
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_SOURCE_VERSION}/odoo:/mnt/reference/source/odoo:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_SOURCE_VERSION}/enterprise:/mnt/reference/source/enterprise:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_SOURCE_VERSION}/design-themes:/mnt/reference/source/design-themes:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/odoo:/mnt/reference/target/odoo:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/enterprise:/mnt/reference/target/enterprise:ro
+      - ${ODOO_WORKTREE_PATH:-${HOME}/Odoo/Worktrees}/${ODOO_TARGET_VERSION}/design-themes:/mnt/reference/target/design-themes:ro
+      - ${HOME}/.odoo-agent:/root/.claude

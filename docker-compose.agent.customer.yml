@@ -1,0 +1,4 @@
+services:
+  agent:
+    volumes:
+      - ${CUSTOMER_REPO}:/mnt/customer:ro
