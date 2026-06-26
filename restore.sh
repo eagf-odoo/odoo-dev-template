@@ -58,7 +58,8 @@ if [[ "$FILE" == *.zip ]]; then
     trap 'rm -rf "$WORK_DIR"' EXIT
 
     # Fail fast if zip doesn't contain dump.sql
-    unzip -l "$HOST_FILE" | grep -q "dump.sql" \
+    # Run in subshell with pipefail off — grep -q exits early causing SIGPIPE to unzip
+    (set +o pipefail; unzip -l "$HOST_FILE" 2>/dev/null | grep -q "dump.sql") \
         || { print_error "No dump.sql found inside ${FILE}. Is it a valid Odoo backup?"; exit 1; }
 
     # Stream dump.sql directly into psql — no intermediate files on disk
