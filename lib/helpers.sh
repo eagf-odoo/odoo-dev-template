@@ -46,6 +46,15 @@ run_with_spinner() {
 }
 
 # --- Version -----------------------------------------------------------------
+# Returns 0 (true) if the given string looks like a valid Odoo version
+# (X.Y or saas-X.Y).
+#
+# Usage: is_valid_version "18.0" && echo "valid"
+is_valid_version() {
+    local version="$1"
+    [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]] || [[ "$version" =~ ^saas-[0-9]+\.[0-9]+$ ]]
+}
+
 # Returns 0 (true) if the given version is a legacy Odoo version (< 18).
 # Handles both X.Y and saas-X.Y formats.
 #

@@ -48,8 +48,12 @@ fi
 found=0
 for version_dir in "$WORKTREES_DIR"/*/; do
     [ -d "$version_dir" ] || continue
-    found=1
     version="$(basename "$version_dir")"
+    if ! is_valid_version "$version"; then
+        print_info "Skipping '$version' (not a valid version directory)"
+        continue
+    fi
+    found=1
     echo -e "  ${BOLD}$version${NC}"
     for repo in "${REPOS[@]}"; do
         dest="$WORKTREES_DIR/$version/$repo"

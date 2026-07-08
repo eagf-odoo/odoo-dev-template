@@ -37,7 +37,7 @@ print_header() {
 
 validate_version() {
     local version="$1"
-    if [[ ! "$version" =~ ^[0-9]+\.[0-9]+$ ]] && [[ ! "$version" =~ ^saas-[0-9]+\.[0-9]+$ ]]; then
+    if ! is_valid_version "$version"; then
         echo -e "${RED}Error: invalid version format '${version}'.${NC}"
         echo -e "${RED}Expected X.Y or saas-X.Y (e.g. 18.0, saas-18.4).${NC}"
         exit 1
