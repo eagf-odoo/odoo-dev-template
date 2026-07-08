@@ -283,7 +283,7 @@ pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
 		|| true
 	@echo ""
 
-agent: check-env check-agent-image check-claude-md ## Start the AI agent and open a Claude Code session
+agent: check-env check-worktrees check-agent-image check-claude-md ## Start the AI agent and open a Claude Code session
 	docker compose $(COMPOSE_FILES) $(AGENT_COMPOSE_EXTRA) run --rm agent
 
 reset: check-env check-worktrees ## Reset the database: drop, recreate, and install base module. Usage: make reset [demo=true]
