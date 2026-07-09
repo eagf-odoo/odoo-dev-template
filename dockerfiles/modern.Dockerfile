@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfribidi-dev \
     libxcb1-dev \
     libpq-dev \
+    libcairo2 \
+    libcairo2-dev \
     git \
     postgresql-client \
     fontconfig \
@@ -46,7 +48,8 @@ WORKDIR /opt/odoo
 COPY ./odoo/requirements.txt .
 RUN pip install --upgrade pip setuptools wheel --break-system-packages \
     && pip install debugpy --break-system-packages \
-    && pip install -r requirements.txt --break-system-packages
+    && pip install -r requirements.txt --break-system-packages \
+    && pip install pycairo rlPyCairo --break-system-packages
 
 USER odoo
 ENV ODOO_RC=/etc/odoo/odoo.conf
