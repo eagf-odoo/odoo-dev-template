@@ -44,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-db list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -456,6 +456,39 @@ list: check-env ## List all client environments and their running status
 	done; \
 	[ "$$found" = "1" ] || echo "  No clients found."; \
 	echo ""
+
+list-db: check-env ## List all databases in this client's Postgres container
+	@if ! docker info > /dev/null 2>&1; then \
+		echo ""; \
+		echo "  \033[31mError: Docker is not running.\033[0m"; \
+		echo "  Start Docker Desktop and try again."; \
+		echo ""; \
+		exit 1; \
+	fi
+	@if [ -z "$$(docker compose $(COMPOSE_FILES) ps -q --status running db 2>/dev/null)" ]; then \
+		echo ""; \
+		echo "  \033[31mError: The database container is not running.\033[0m"; \
+		echo "  Start it first with: make start"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "  Databases in this client's Postgres:"
+	@echo ""
+	@_dbs=$$(docker compose $(COMPOSE_FILES) exec -T db psql -U odoo -d postgres -Atc \
+		"SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname;" 2>/dev/null); \
+	if [ -z "$$_dbs" ]; then \
+		echo "  \033[33mNo databases found.\033[0m"; \
+	else \
+		echo "$$_dbs" | while read -r _db; do \
+			if [ "$$_db" = "$(ODOO_DB_NAME)" ]; then \
+				printf "  \033[32m● %s\033[0m  (active)\n" "$$_db"; \
+			else \
+				printf "  \033[90m○ %s\033[0m\n" "$$_db"; \
+			fi; \
+		done; \
+	fi
+	@echo ""
 
 list-worktrees: ## List all available worktrees
 	@_path=$$(eval echo "$(ODOO_WORKTREE_PATH)"); \

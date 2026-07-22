@@ -224,6 +224,9 @@ database available alongside the upgraded one — for data comparison via
 # Restore the prod backup as a secondary database (Odoo keeps running)
 make restore dump=acme_prod.zip db=acme_17_prod
 
+# See what's now living in this client's Postgres
+make list-db
+
 # Compare both databases side by side in two terminals
 make psql                      # → ODOO_DB_NAME (upgraded database)
 make psql db=acme_17_prod      # → production reference

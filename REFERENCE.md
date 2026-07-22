@@ -39,6 +39,7 @@ make test-file file=/path/to/test.py [demo=true]    Run tests from a specific fi
 make pgadmin                                        Start pgAdmin4 at http://localhost:${PGADMIN_PORT:-5050}
 make agent                                          Start the AI agent and open a Claude Code session
 make list                                           List all client environments and their running status
+make list-db                                        List databases in this client's Postgres (active one highlighted)
 make list-worktrees                                 List available worktrees (active one highlighted)
 make worktree                                       Open the interactive worktree manager
 make worktree-add VERSION=19.0                      Add a worktree for the given version
@@ -268,6 +269,27 @@ SELECT COUNT(*) FROM res_partner;
 The optional `db=` parameter connects to any database in the same PostgreSQL
 instance without changing `.env`. From inside a psql session you can also
 switch with `\c <dbname>`.
+
+### `make list-db` — list databases in this client's Postgres
+
+Restoring a secondary dump (see [Keeping a production reference database
+for SQL comparison](WORKFLOWS.md#keeping-a-production-reference-database-for-sql-comparison))
+leaves multiple databases coexisting in the same PostgreSQL instance. Use
+`make list-db` to see what's actually there before connecting with `psql`.
+
+```bash
+make list-db
+```
+
+```
+  Databases in this client's Postgres:
+
+  ● acme_19            (active)
+  ○ acme_19_prod
+```
+
+The database matching `ODOO_DB_NAME` is marked as active. Fails with a
+clear error if Docker isn't running or the `db` container is stopped.
 
 ### `make extract` — extract files from the db container
 
