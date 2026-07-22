@@ -38,6 +38,7 @@ make test-tags tags=/mod:Class.method [demo=true] [db=other_name]  Run tests mat
 make test-file file=/path/to/test.py [demo=true] [db=other_name]   Run tests from a specific file
 make pgadmin                                                       Start pgAdmin4 at http://localhost:${PGADMIN_PORT:-5050}
 make agent                                                         Start the AI agent and open a Claude Code session
+make reset-agent                                                   Remove the agent state directory (clears session, skills, and memory)
 make list                                                          List all client environments and their running status
 make list-db                                                       List databases in this client's Postgres (active one highlighted)
 make list-worktrees                                                List available worktrees (active one highlighted)
@@ -47,6 +48,12 @@ make worktree-remove VERSION=17.0                                  Remove a work
 make pull-all                                                      Update all worktrees to the latest commit on their origin branch
 make destroy                                                       Remove all containers, networks and volumes (deletes the database)
 ```
+
+> **Template version check:** `make start` compares your local git tag against
+> the latest tag on `origin` and prints a one-line warning if this clone is
+> behind (e.g. `⚠ New version available: v1.2.1 → v1.3.0 (git pull to
+> update)`). It's informational only — nothing is blocked, and there is
+> nothing to configure.
 
 ---
 

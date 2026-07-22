@@ -44,7 +44,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps init restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-db list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-db list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \

@@ -58,6 +58,11 @@ Edit `.env` with the values for your client. Set `ODOO_MODE` to `development`
 or `upgrade`, fill in the corresponding version variables, and configure paths
 and database name.
 
+> **Finish editing before starting.** If `make start` runs while `ODOO_DB_NAME`
+> is still the literal placeholder from `.env.example`, Odoo will auto-create
+> a database and filestore with that placeholder name instead of your
+> client's. Make sure `.env` is fully filled in before step 5.
+
 **3. Build the Docker image**
 
 ```bash
