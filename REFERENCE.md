@@ -19,33 +19,33 @@ see [WORKFLOWS.md](WORKFLOWS.md).
 ## Available commands
 
 ```
-make start                                          Start the environment
-make stop                                           Stop the environment (including pgAdmin if running)
-make restart                                        Restart the Odoo server (keeps the database running)
-make restart-all                                    Restart the entire stack (Odoo + database)
-make logs                                           Stream Odoo server logs
-make shell [script=path/to/script.py]               Open an Odoo ORM shell, or run a script non-interactively
-make psql [db=other_name]                           Open a psql shell (default: active database)
-make extract src=<path> [dest=.]                    Extract a file from the db container to the host
-make ps                                             Show container status
-make build                                          Build the Docker image for ODOO_VERSION
-make build-agent                                    Build the AI agent Docker image
-make reset [demo=true]                              Reset the database: drop, recreate, and install base module
-make restore dump=<file> [db=<name>]                Restore a database from ~/Odoo/Dumps/ (.zip, .dump, or .sql)
-make update modules=mod1,mod2                       Update Odoo modules
-make test modules=mod1,mod2 [demo=true]             Update modules and run Odoo test suite.
-make test-tags tags=/mod:Class.method [demo=true]   Run tests matching a tag, class or method
-make test-file file=/path/to/test.py [demo=true]    Run tests from a specific file
-make pgadmin                                        Start pgAdmin4 at http://localhost:${PGADMIN_PORT:-5050}
-make agent                                          Start the AI agent and open a Claude Code session
-make list                                           List all client environments and their running status
-make list-db                                        List databases in this client's Postgres (active one highlighted)
-make list-worktrees                                 List available worktrees (active one highlighted)
-make worktree                                       Open the interactive worktree manager
-make worktree-add VERSION=19.0                      Add a worktree for the given version
-make worktree-remove VERSION=17.0                   Remove a worktree for the given version
-make pull-all                                       Update all worktrees to the latest commit on their origin branch
-make destroy                                        Remove all containers, networks and volumes (deletes the database)
+make start                                                         Start the environment
+make stop                                                          Stop the environment (including pgAdmin if running)
+make restart                                                       Restart the Odoo server (keeps the database running)
+make restart-all                                                   Restart the entire stack (Odoo + database)
+make logs                                                          Stream Odoo server logs
+make shell [script=path/to/script.py] [db=other_name]              Open an Odoo ORM shell, or run a script non-interactively
+make psql [db=other_name]                                          Open a psql shell (default: active database)
+make extract src=<path> [dest=.]                                   Extract a file from the db container to the host
+make ps                                                            Show container status
+make build                                                         Build the Docker image for ODOO_VERSION
+make build-agent                                                   Build the AI agent Docker image
+make reset [demo=true]                                             Reset the database: drop, recreate, and install base module
+make restore dump=<file> [db=<name>]                               Restore a database from ~/Odoo/Dumps/ (.zip, .dump, or .sql)
+make update modules=mod1,mod2 [db=other_name]                      Update Odoo modules
+make test modules=mod1,mod2 [demo=true] [db=other_name]            Update modules and run Odoo test suite.
+make test-tags tags=/mod:Class.method [demo=true] [db=other_name]  Run tests matching a tag, class or method
+make test-file file=/path/to/test.py [demo=true] [db=other_name]   Run tests from a specific file
+make pgadmin                                                       Start pgAdmin4 at http://localhost:${PGADMIN_PORT:-5050}
+make agent                                                         Start the AI agent and open a Claude Code session
+make list                                                          List all client environments and their running status
+make list-db                                                       List databases in this client's Postgres (active one highlighted)
+make list-worktrees                                                List available worktrees (active one highlighted)
+make worktree                                                      Open the interactive worktree manager
+make worktree-add VERSION=19.0                                     Add a worktree for the given version
+make worktree-remove VERSION=17.0                                  Remove a worktree for the given version
+make pull-all                                                      Update all worktrees to the latest commit on their origin branch
+make destroy                                                       Remove all containers, networks and volumes (deletes the database)
 ```
 
 ---
@@ -186,7 +186,9 @@ Three commands are available depending on the level of granularity needed:
 
 All three commands accept an optional `demo=true` parameter to load demo data
 during the test run. By default demo data is disabled (consistent across Odoo
-17, 18, and 19 — see note below).
+17, 18, and 19 — see note below). They also accept an optional `db=` parameter
+to target a database other than the active one — useful when more than one
+database is restored in the same client's Postgres (see [`make list-db`](#make-list-db--list-databases-in-this-clients-postgres)).
 
 **Examples**
 
@@ -205,6 +207,9 @@ make test-tags tags=/acme_sale:TestSaleOrder.test_create
 
 # Run all tests in a file
 make test-file file=/mnt/extra-addons/acme_sale/tests/test_sale_order.py
+
+# Run against a secondary database instead of the active one
+make test modules=acme_sale db=acme_19_prod
 ```
 
 > `--test-file` is available from Odoo 15 onwards.
@@ -233,6 +238,9 @@ make shell
 
 # Run a script non-interactively and exit
 make shell script=fix_mega_menu.py
+
+# Open a shell against a secondary database instead of the active one
+make shell db=acme_19_prod
 ```
 
 When `script=` is provided, the file is piped to the shell process via stdin

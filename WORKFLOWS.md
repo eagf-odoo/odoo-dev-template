@@ -236,7 +236,10 @@ Both databases live in the same PostgreSQL instance. When `db=` is
 provided, the web container is not stopped or restarted. The reference
 database is intended for read-only SQL inspection — to run Odoo against
 it, switch `ODOO_DB_NAME` and `ODOO_MODE`/`ODOO_VERSION` in `.env` and
-run `make restart`.
+run `make restart-all`. Plain `make restart` restarts the existing web
+container without recreating it, so it keeps the `.env` values that
+were active the last time the stack was brought up — it will not pick
+up the new `ODOO_DB_NAME`.
 
 ---
 

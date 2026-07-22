@@ -254,15 +254,15 @@ restart-all: stop start ## Restart the entire stack (Odoo + database)
 logs: check-env ## Stream Odoo server logs
 	docker compose $(COMPOSE_FILES) logs -f web
 
-shell: check-running ## Open an Odoo ORM shell. Usage: make shell [script=path/to/script.py]
+shell: check-running ## Open an Odoo ORM shell. Usage: make shell [script=path/to/script.py] [db=other_name]
 ifdef script
 	docker compose $(COMPOSE_FILES) exec -T web python $(ODOO_BIN) shell \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME) < $(script)
+		-d $(if $(db),$(db),$(ODOO_DB_NAME)) < $(script)
 else
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) shell \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME)
+		-d $(if $(db),$(db),$(ODOO_DB_NAME))
 endif
 
 psql: check-running ## Open a psql shell. Usage: make psql [db=other_name]
@@ -334,41 +334,41 @@ restore: check-env ## Restore a database. Usage: make restore dump=backup.zip [d
 	@[ -n "$(dump)" ] || { echo ""; echo "  \033[31mError: dump= is required. Usage: make restore dump=backup.zip [db=other_name]\033[0m"; echo ""; exit 1; }
 	./restore.sh dumps/$(dump) $(db)
 
-update: check-running check-worktrees ## Update Odoo modules. Usage: make update modules=mod1,mod2
+update: check-running check-worktrees ## Update Odoo modules. Usage: make update modules=mod1,mod2 [db=other_name]
 	@[ -n "$(modules)" ] || { echo ""; echo "  \033[31mError: modules= is required. Usage: make update modules=mod1,mod2\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME) \
+		-d $(if $(db),$(db),$(ODOO_DB_NAME)) \
 		-u $(modules) \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		--stop-after-init
 
-test: check-running check-worktrees ## Run tests for modules. Usage: make test modules=sale,account [demo=true]
+test: check-running check-worktrees ## Run tests for modules. Usage: make test modules=sale,account [demo=true] [db=other_name]
 	@[ -n "$(modules)" ] || { echo ""; echo "  \033[31mError: modules= is required. Usage: make test modules=mod1,mod2\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME) \
+		-d $(if $(db),$(db),$(ODOO_DB_NAME)) \
 		-u $(modules) \
 		--test-enable \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		$(_DEMO_FLAG) \
 		--stop-after-init
 
-test-tags: check-running check-worktrees ## Run tests by tag. Usage: make test-tags tags=/module:Class.method [demo=true]
+test-tags: check-running check-worktrees ## Run tests by tag. Usage: make test-tags tags=/module:Class.method [demo=true] [db=other_name]
 	@[ -n "$(tags)" ] || { echo ""; echo "  \033[31mError: tags= is required. Usage: make test-tags tags=/module:Class.method\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME) \
+		-d $(if $(db),$(db),$(ODOO_DB_NAME)) \
 		--test-tags $(tags) \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		$(_DEMO_FLAG) \
 		--stop-after-init
 
-test-file: check-running check-worktrees ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py [demo=true]
+test-file: check-running check-worktrees ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py [demo=true] [db=other_name]
 	@[ -n "$(file)" ] || { echo ""; echo "  \033[31mError: file= is required. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
-		-d $(ODOO_DB_NAME) \
+		-d $(if $(db),$(db),$(ODOO_DB_NAME)) \
 		--test-file $(file) \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		$(_DEMO_FLAG) \
