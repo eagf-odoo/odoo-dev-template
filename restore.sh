@@ -7,12 +7,6 @@ source "$SCRIPT_DIR/lib/helpers.sh"
 ODOO_MODE="${ODOO_MODE:-development}"
 COMPOSE_FILES=(-f docker-compose.yml -f "docker-compose.${ODOO_MODE}.yml")
 
-# --- Check environment is up -------------------------------------------------
-if [ -z "$(docker compose "${COMPOSE_FILES[@]}" ps --all -q web 2>/dev/null)" ]; then
-    print_error "Environment not started. Run 'make start' first."
-    exit 1
-fi
-
 # --- Validate arguments ------------------------------------------------------
 FILE="${1:-}"
 TARGET_DB="${2:-${ODOO_DB_NAME}}"
@@ -31,18 +25,18 @@ fi
 
 # --- Restore -----------------------------------------------------------------
 if [ "$SECONDARY_RESTORE" = "false" ]; then
-    print_info "Stopping Odoo web service..."
-    docker compose "${COMPOSE_FILES[@]}" stop web >/dev/null 2>&1
+    run_with_spinner "Stopping Odoo web service..." \
+        docker compose "${COMPOSE_FILES[@]}" stop web
 fi
 
-print_info "Starting database service..."
-docker compose "${COMPOSE_FILES[@]}" up -d --wait db >/dev/null 2>&1
+run_with_spinner "Starting database service..." \
+    docker compose "${COMPOSE_FILES[@]}" up -d --wait db
 
-print_info "Dropping existing database ($TARGET_DB)..."
-docker compose "${COMPOSE_FILES[@]}" exec db dropdb -U odoo --if-exists "$TARGET_DB" >/dev/null 2>&1
+run_with_spinner "Dropping existing database ($TARGET_DB)..." \
+    docker compose "${COMPOSE_FILES[@]}" exec db dropdb -U odoo --if-exists --force "$TARGET_DB"
 
-print_info "Creating fresh database ($TARGET_DB)..."
-docker compose "${COMPOSE_FILES[@]}" exec db createdb -U odoo "$TARGET_DB" >/dev/null 2>&1
+run_with_spinner "Creating fresh database ($TARGET_DB)..." \
+    docker compose "${COMPOSE_FILES[@]}" exec db createdb -U odoo "$TARGET_DB"
 
 if [[ "$FILE" == *.zip ]]; then
     DUMPS_PATH="${DUMPS_PATH:-$HOME/Odoo/Dumps}"

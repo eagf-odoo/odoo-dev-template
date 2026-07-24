@@ -330,7 +330,7 @@ reset: check-env check-worktrees ## Reset the database: drop, recreate, and inst
 	@echo "  \033[32m✓ Database initialized. Run 'make start' to launch Odoo.\033[0m"
 	@echo ""
 
-restore: check-env ## Restore a database. Usage: make restore dump=backup.zip [db=other_name]
+restore: check-running ## Restore a database. Usage: make restore dump=backup.zip [db=other_name]
 	@[ -n "$(dump)" ] || { echo ""; echo "  \033[31mError: dump= is required. Usage: make restore dump=backup.zip [db=other_name]\033[0m"; echo ""; exit 1; }
 	./restore.sh dumps/$(dump) $(db)
 
