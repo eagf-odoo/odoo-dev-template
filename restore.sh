@@ -4,13 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/helpers.sh"
 
-# --- Load .env ---------------------------------------------------------------
-if [ ! -f .env ]; then
-    print_error ".env not found — copy .env.example to .env and configure it"
-    exit 1
-fi
-set -a; source .env; set +a
-
 ODOO_MODE="${ODOO_MODE:-development}"
 COMPOSE_FILES=(-f docker-compose.yml -f "docker-compose.${ODOO_MODE}.yml")
 
