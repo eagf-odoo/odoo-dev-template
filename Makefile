@@ -185,6 +185,7 @@ check-ports:
 	}; \
 	_check_port "$${ODOO_PORT:-8069}" "ODOO_PORT"; \
 	_check_port "$${ODOO_DEBUG_PORT:-5678}" "ODOO_DEBUG_PORT"; \
+	_check_port "$${PGADMIN_PORT:-5050}" "PGADMIN_PORT"; \
 	[ "$$_ok" = "1" ] || { echo ""; exit 1; }
 
 check-worktrees:
@@ -275,7 +276,7 @@ extract: check-running ## Extract a file from the db container. Usage: make extr
 ps: check-env ## Show container status
 	docker compose $(COMPOSE_FILES) ps
 
-pgadmin: check-env ## Start pgAdmin4 at http://localhost:5050
+pgadmin: check-env check-ports ## Start pgAdmin4 at http://localhost:5050
 	@echo ""
 	@echo "  Waiting for pgAdmin to be ready..."
 	@docker compose $(COMPOSE_FILES) --profile pgadmin up -d --wait \
