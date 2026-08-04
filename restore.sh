@@ -23,6 +23,22 @@ if [[ "$FILE" != *.dump ]] && [[ "$FILE" != *.sql ]] && [[ "$FILE" != *.zip ]]; 
     exit 1
 fi
 
+# --- Validate dump file (before touching the database) -----------------------
+DUMPS_PATH="${DUMPS_PATH:-$HOME/Odoo/Dumps}"
+HOST_FILE="$DUMPS_PATH/$(basename "$FILE")"
+
+if [ ! -f "$HOST_FILE" ] || [ ! -r "$HOST_FILE" ]; then
+    print_error "Dump file not found or not readable: ${HOST_FILE}"
+    exit 1
+fi
+
+if [[ "$FILE" == *.zip ]]; then
+    # Fail fast if zip doesn't contain dump.sql
+    # Run in subshell with pipefail off — grep -q exits early causing SIGPIPE to unzip
+    (set +o pipefail; unzip -l "$HOST_FILE" 2>/dev/null | grep -q "dump.sql") \
+        || { print_error "No dump.sql found inside ${FILE}. Is it a valid Odoo backup?"; exit 1; }
+fi
+
 # --- Restore -----------------------------------------------------------------
 if [ "$SECONDARY_RESTORE" = "false" ]; then
     run_with_spinner "Stopping Odoo web service..." \
@@ -39,15 +55,8 @@ run_with_spinner "Creating fresh database ($TARGET_DB)..." \
     docker compose "${COMPOSE_FILES[@]}" exec db createdb -U odoo "$TARGET_DB"
 
 if [[ "$FILE" == *.zip ]]; then
-    DUMPS_PATH="${DUMPS_PATH:-$HOME/Odoo/Dumps}"
-    HOST_FILE="$DUMPS_PATH/$(basename "$FILE")"
     WORK_DIR=$(mktemp -d /tmp/odoo-restore.XXXXXX)
     trap 'rm -rf "$WORK_DIR"' EXIT
-
-    # Fail fast if zip doesn't contain dump.sql
-    # Run in subshell with pipefail off — grep -q exits early causing SIGPIPE to unzip
-    (set +o pipefail; unzip -l "$HOST_FILE" 2>/dev/null | grep -q "dump.sql") \
-        || { print_error "No dump.sql found inside ${FILE}. Is it a valid Odoo backup?"; exit 1; }
 
     # Stream dump.sql directly into psql — no intermediate files on disk
     run_with_spinner "Restoring ${FILE}..." \
