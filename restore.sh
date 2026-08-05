@@ -128,6 +128,12 @@ WHERE id = (
 );"
 docker compose "${COMPOSE_FILES[@]}" exec -T db psql -U odoo -d "$TARGET_DB" -c "$SQL" -q >/dev/null
 
+print_info "Disabling cron jobs/mail server and extending expiration date for local dev..."
+DEV_SQL="UPDATE ir_cron SET active='f';
+UPDATE ir_mail_server SET active='f';
+UPDATE ir_config_parameter SET value = '2040-01-01 00:00:00' WHERE key = 'database.expiration_date';"
+docker compose "${COMPOSE_FILES[@]}" exec -T db psql -U odoo -d "$TARGET_DB" -c "$DEV_SQL" -q >/dev/null
+
 echo ""
 if [ "$SECONDARY_RESTORE" = "false" ]; then
     print_info "Starting Odoo..."
