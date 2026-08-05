@@ -427,6 +427,15 @@ Do not put `-i base` in `ODOO_EXTRA_ARGS` — it would reinstall the base module
 on every startup. `ODOO_EXTRA_ARGS` is reserved for arguments that apply on
 every run (e.g. `--dev=all`).
 
+> **Filestore and dump formats**: only `.zip` dumps can carry the filestore —
+> `restore.sh` extracts it automatically when present inside the zip and
+> installs it at `~/Odoo/.data/<db>/filestore/<db>`. `.dump` and `.sql` files
+> are database-only (e.g. a raw Postgres dump taken directly from Odoo.sh) and
+> never include the filestore. Restoring one of these succeeds, but attachments,
+> images, and generated reports that read from the filestore will come up
+> broken. If you need working attachments, use a `.zip` backup, or manually
+> copy the filestore into `~/Odoo/.data/<db>/filestore/<db>` after restoring.
+
 ---
 
 ## Troubleshooting
