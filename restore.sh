@@ -6,7 +6,12 @@ source "$SCRIPT_DIR/lib/helpers.sh"
 
 ODOO_MODE="${ODOO_MODE:-development}"
 COMPOSE_FILES=(-f docker-compose.yml -f "docker-compose.${ODOO_MODE}.yml")
-[ -n "${EXTERNAL_DISK_PATH:-}" ] && COMPOSE_FILES+=(-f docker-compose.external.yml)
+if [ -n "${EXTERNAL_DISK_PATH:-}" ]; then
+    COMPOSE_FILES+=(-f docker-compose.external.yml)
+    # Keep every mktemp in this process (including run_with_spinner's log
+    # capture) off the internal disk — a 70GB restore leaves no margin.
+    export TMPDIR="$EXTERNAL_DISK_PATH"
+fi
 
 # --- Validate arguments ------------------------------------------------------
 FILE="${1:-}"
