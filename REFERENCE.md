@@ -430,7 +430,9 @@ every run (e.g. `--dev=all`).
 
 > **Filestore and dump formats**: only `.zip` dumps can carry the filestore —
 > `restore.sh` extracts it automatically when present inside the zip and
-> installs it at `~/Odoo/.data/<db>/filestore/<db>`. `.dump` and `.sql` files
+> installs it at `~/Odoo/.data/<db>/filestore/<db>`. For dumps at or above
+> `FILESTORE_PROMPT_THRESHOLD_GB` (default 4GB), it asks first whether to
+> restore the filestore, defaulting to yes. `.dump` and `.sql` files
 > are database-only (e.g. a raw Postgres dump taken directly from Odoo.sh) and
 > never include the filestore. Restoring one of these succeeds, but attachments,
 > images, and generated reports that read from the filestore will come up

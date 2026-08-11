@@ -38,6 +38,23 @@ if [[ "$FILE" == *.zip ]]; then
     # Run in subshell with pipefail off — grep -q exits early causing SIGPIPE to unzip
     (set +o pipefail; unzip -l "$HOST_FILE" 2>/dev/null | grep -q "dump.sql") \
         || { print_error "No dump.sql found inside ${FILE}. Is it a valid Odoo backup?"; exit 1; }
+
+    # Check for filestore up front so we can prompt before any destructive/slow
+    # steps start — the user answers once and the rest of the restore runs unattended.
+    FILESTORE_IN_ZIP=$(unzip -l "$HOST_FILE" | grep -c "filestore/" || true)
+    RESTORE_FILESTORE=true
+    if [ "$FILESTORE_IN_ZIP" -gt 0 ]; then
+        FILESTORE_PROMPT_THRESHOLD_GB="${FILESTORE_PROMPT_THRESHOLD_GB:-4}"
+        DUMP_SIZE_BYTES=$(stat -f%z "$HOST_FILE")
+        THRESHOLD_BYTES=$((FILESTORE_PROMPT_THRESHOLD_GB * 1024 * 1024 * 1024))
+        if [ "$DUMP_SIZE_BYTES" -ge "$THRESHOLD_BYTES" ]; then
+            DUMP_SIZE_GB=$(awk "BEGIN { printf \"%.1f\", $DUMP_SIZE_BYTES / 1024 / 1024 / 1024 }")
+            read -p "  Dump is ${DUMP_SIZE_GB}GB and includes a filestore. Restore it too? [Y/n] " restore_fs
+            if [ "$restore_fs" = "n" ] || [ "$restore_fs" = "N" ]; then
+                RESTORE_FILESTORE=false
+            fi
+        fi
+    fi
 fi
 
 # --- Restore -----------------------------------------------------------------
@@ -66,9 +83,9 @@ if [[ "$FILE" == *.zip ]]; then
                 psql -U odoo -d \"$TARGET_DB\" -q" \
         || { print_error "Restore failed — check the dump file."; exit 1; }
 
-    # Extract filestore only if present — dump.sql never hits disk
-    FILESTORE_IN_ZIP=$(unzip -l "$HOST_FILE" | grep -c "filestore/" || true)
-    if [ "$FILESTORE_IN_ZIP" -gt 0 ]; then
+    # Extract filestore only if present and the user opted in (see prompt above)
+    # — dump.sql never hits disk either way.
+    if [ "$FILESTORE_IN_ZIP" -gt 0 ] && [ "$RESTORE_FILESTORE" = "true" ]; then
         run_with_spinner "Extracting filestore..." \
             unzip -q "$HOST_FILE" "filestore/*" -d "$WORK_DIR" 2>/dev/null || true
         FILESTORE_SRC="$WORK_DIR/filestore"
@@ -80,6 +97,8 @@ if [[ "$FILE" == *.zip ]]; then
                 bash -c "rm -rf \"$TARGET\" && mkdir -p \"$(dirname "$TARGET")\" && mv \"$FILESTORE_SRC\" \"$TARGET\""
             print_ok "Filestore installed."
         fi
+    elif [ "$FILESTORE_IN_ZIP" -gt 0 ]; then
+        print_info "Skipping filestore restore (attachments/reports won't work until restored manually)."
     fi
 elif [[ "$FILE" == *.dump ]]; then
     run_with_spinner "Restoring ${FILE}..." \
