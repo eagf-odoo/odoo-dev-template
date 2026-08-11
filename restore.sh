@@ -56,7 +56,7 @@ run_with_spinner "Creating fresh database ($TARGET_DB)..." \
     docker compose "${COMPOSE_FILES[@]}" exec db createdb -U odoo "$TARGET_DB"
 
 if [[ "$FILE" == *.zip ]]; then
-    WORK_DIR=$(mktemp -d /tmp/odoo-restore.XXXXXX)
+    WORK_DIR=$(mktemp -d "${EXTERNAL_DISK_PATH:-/tmp}/odoo-restore.XXXXXX")
     trap 'rm -rf "$WORK_DIR"' EXIT
 
     # Stream dump.sql directly into psql — no intermediate files on disk
