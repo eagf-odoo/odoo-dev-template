@@ -397,30 +397,132 @@ destroy: check-env ## Remove all containers, networks and volumes (deletes the d
 	@echo "  The AI agent volume (skills, session) is preserved. Use 'make reset-agent' to clear it."
 	@echo "  This action is irreversible."
 	@echo ""
-	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& if docker compose $(COMPOSE_FILES) up -d --wait db > /dev/null 2>&1; then \
-			_dbs=$$(docker compose $(COMPOSE_FILES) exec -T db psql -U odoo -d postgres -Atc \
-				"SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname;" 2>/dev/null); \
-			_dbs="$$_dbs $(ODOO_DB_NAME)"; \
+	@read -p "  Are you sure? [y/N] " confirm; \
+	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+		echo "  Aborted."; \
+		exit 0; \
+	fi; \
+	_log=$$(mktemp /tmp/odoo-destroy.XXXXXX); \
+	_dbfile=$$(mktemp /tmp/odoo-destroy-dbs.XXXXXX); \
+	( \
+		if docker compose $(COMPOSE_FILES) up -d --wait db > "$$_log" 2>&1; then \
+			docker compose $(COMPOSE_FILES) exec -T db psql -U odoo -d postgres -Atc \
+				"SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname;" \
+				> "$$_dbfile" 2>>"$$_log"; \
 		else \
-			echo "  \033[33mWarning\033[0m: could not reach the database — only removing the filestore for '$(ODOO_DB_NAME)'."; \
-			echo "  Filestores for any secondary databases (e.g. restored via 'db=other_name') may be left orphaned on disk."; \
-			_dbs="$(ODOO_DB_NAME)"; \
+			exit 1; \
 		fi \
-		&& if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
+	) & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Checking for existing databases...' ;; \
+			1) printf '\r  / Checking for existing databases...' ;; \
+			2) printf '\r  - Checking for existing databases...' ;; \
+			*) printf '\r  + Checking for existing databases...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid"; _code=$$?; \
+	printf '\r%-60s\r' ''; \
+	if [ "$$_code" -eq 0 ]; then \
+		_dbs="$$(cat "$$_dbfile") $(ODOO_DB_NAME)"; \
+		echo "  Checking for existing databases... done"; \
+	else \
+		echo "  \033[33mWarning\033[0m: could not reach the database — only removing the filestore for '$(ODOO_DB_NAME)'."; \
+		echo "  Filestores for any secondary databases (e.g. restored via 'db=other_name') may be left orphaned on disk."; \
+		_dbs="$(ODOO_DB_NAME)"; \
+	fi; \
+	rm -f "$$_log" "$$_dbfile"; \
+	\
+	_log=$$(mktemp /tmp/odoo-destroy.XXXXXX); \
+	( \
+		if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
 			for _db in $$_dbs; do rm -rf "$(EXTERNAL_DISK_PATH)/.data/$$_db"; done; \
 		else \
 			for _db in $$_dbs; do rm -rf "$(HOME)/Odoo/.data/$$_db"; done; \
 		fi \
-		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
-		&& { docker volume rm --force \
-			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true; } \
-		&& if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
+	) > "$$_log" 2>&1 & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Removing filestore(s)...' ;; \
+			1) printf '\r  / Removing filestore(s)...' ;; \
+			2) printf '\r  - Removing filestore(s)...' ;; \
+			*) printf '\r  + Removing filestore(s)...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid"; _code=$$?; \
+	printf '\r%-60s\r' ''; \
+	if [ "$$_code" -ne 0 ]; then \
+		printf '  \033[31mError removing filestore(s).\033[0m\n\n'; \
+		cat "$$_log"; \
+		rm -f "$$_log"; \
+		exit $$_code; \
+	fi; \
+	rm -f "$$_log"; \
+	echo "  Removing filestore(s)... done"; \
+	\
+	_log=$$(mktemp /tmp/odoo-destroy.XXXXXX); \
+	( docker compose $(COMPOSE_FILES) --profile pgadmin down \
+		&& { docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true; } \
+	) > "$$_log" 2>&1 & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Stopping and removing containers...' ;; \
+			1) printf '\r  / Stopping and removing containers...' ;; \
+			2) printf '\r  - Stopping and removing containers...' ;; \
+			*) printf '\r  + Stopping and removing containers...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid"; _code=$$?; \
+	printf '\r%-60s\r' ''; \
+	if [ "$$_code" -ne 0 ]; then \
+		printf '  \033[31mError stopping/removing containers.\033[0m\n\n'; \
+		cat "$$_log"; \
+		rm -f "$$_log"; \
+		exit $$_code; \
+	fi; \
+	rm -f "$$_log"; \
+	echo "  Stopping and removing containers... done"; \
+	\
+	_log=$$(mktemp /tmp/odoo-destroy.XXXXXX); \
+	( \
+		if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
 			rm -rf "$(EXTERNAL_DISK_PATH)/pgdata/$(ODOO_DB_NAME)"; \
 		else \
 			docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-db-data 2>/dev/null || true; \
 		fi \
-		|| echo "Aborted."
+	) > "$$_log" 2>&1 & \
+	_pid=$$!; _i=0; \
+	while kill -0 "$$_pid" 2>/dev/null; do \
+		case $$((_i % 4)) in \
+			0) printf '\r  | Removing database files...' ;; \
+			1) printf '\r  / Removing database files...' ;; \
+			2) printf '\r  - Removing database files...' ;; \
+			*) printf '\r  + Removing database files...' ;; \
+		esac; \
+		sleep 0.15; \
+		_i=$$((_i + 1)); \
+	done; \
+	wait "$$_pid"; _code=$$?; \
+	printf '\r%-60s\r' ''; \
+	if [ "$$_code" -ne 0 ]; then \
+		printf '  \033[31mError removing database files.\033[0m\n\n'; \
+		cat "$$_log"; \
+		rm -f "$$_log"; \
+		exit $$_code; \
+	fi; \
+	rm -f "$$_log"; \
+	echo "  Removing database files... done"; \
+	echo ""; \
+	echo "  \033[32m✓ Environment destroyed.\033[0m"
 	@echo ""
 
 reset-agent: ## Remove the agent state directory (clears session, skills, and memory across all projects)
