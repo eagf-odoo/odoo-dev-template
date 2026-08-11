@@ -6,6 +6,7 @@ source "$SCRIPT_DIR/lib/helpers.sh"
 
 ODOO_MODE="${ODOO_MODE:-development}"
 COMPOSE_FILES=(-f docker-compose.yml -f "docker-compose.${ODOO_MODE}.yml")
+[ -n "${EXTERNAL_DISK_PATH:-}" ] && COMPOSE_FILES+=(-f docker-compose.external.yml)
 
 # --- Validate arguments ------------------------------------------------------
 FILE="${1:-}"
@@ -72,7 +73,9 @@ if [[ "$FILE" == *.zip ]]; then
             unzip -q "$HOST_FILE" "filestore/*" -d "$WORK_DIR" 2>/dev/null || true
         FILESTORE_SRC="$WORK_DIR/filestore"
         if [ -d "$FILESTORE_SRC" ] && [ -n "$(ls -A "$FILESTORE_SRC" 2>/dev/null)" ]; then
-            TARGET="$HOME/Odoo/.data/$TARGET_DB/filestore/$TARGET_DB"
+            DATA_ROOT="${EXTERNAL_DISK_PATH:+${EXTERNAL_DISK_PATH}/.data}"
+            DATA_ROOT="${DATA_ROOT:-$HOME/Odoo/.data}"
+            TARGET="$DATA_ROOT/$TARGET_DB/filestore/$TARGET_DB"
             run_with_spinner "Installing filestore..." \
                 bash -c "rm -rf \"$TARGET\" && mkdir -p \"$(dirname "$TARGET")\" && mv \"$FILESTORE_SRC\" \"$TARGET\""
             print_ok "Filestore installed."

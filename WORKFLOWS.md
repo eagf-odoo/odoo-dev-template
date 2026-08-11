@@ -302,3 +302,4 @@ make start
 | Fresh database | `make reset` then `make start` |
 | Restore from dump | `make restore dump=backup.zip` (or `.dump`, `.sql`) then `make start` |
 | Restore secondary DB (upgrade reference) | `make restore dump=backup.zip db=acme_17_prod` |
+| Restore a large dump to an external disk | `EXTERNAL_DISK_PATH=/Volumes/ExternalDisk` then `make restore-external dump=backup.zip` |

@@ -1,0 +1,10 @@
+services:
+  # Compose merges volumes by target path, replacing the base entry for the
+  # same container path rather than appending a duplicate mount.
+  web:
+    volumes:
+      - ${EXTERNAL_DISK_PATH}/.data/${ODOO_DB_NAME}:/var/lib/odoo
+
+  db:
+    volumes:
+      - ${EXTERNAL_DISK_PATH}/pgdata/${ODOO_DB_NAME}:/var/lib/postgresql/data

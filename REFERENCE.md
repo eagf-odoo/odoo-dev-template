@@ -32,6 +32,7 @@ make build                                                         Build the Doc
 make build-agent                                                   Build the AI agent Docker image
 make reset [demo=true]                                             Reset the database: drop, recreate, and install base module
 make restore dump=<file> [db=<name>]                               Restore a database from ~/Odoo/Dumps/ (.zip, .dump, or .sql)
+make restore-external dump=<file> [db=<name>]                      Same as make restore, with data on EXTERNAL_DISK_PATH
 make update modules=mod1,mod2 [db=other_name]                      Update Odoo modules
 make test modules=mod1,mod2 [demo=true] [db=other_name]            Update modules and run Odoo test suite.
 make test-tags tags=/mod:Class.method [demo=true] [db=other_name]  Run tests matching a tag, class or method
@@ -435,6 +436,32 @@ every run (e.g. `--dev=all`).
 > images, and generated reports that read from the filestore will come up
 > broken. If you need working attachments, use a `.zip` backup, or manually
 > copy the filestore into `~/Odoo/.data/<db>/filestore/<db>` after restoring.
+
+### Restoring large dumps to an external disk
+
+For large dumps (tens of GB), Postgres data and the filestore can be redirected
+to an external disk instead of the internal one. Set `EXTERNAL_DISK_PATH` in
+`.env` to the disk's mount point **before** running `make start`, then use
+`make restore-external` instead of `make restore`:
+
+```bash
+# .env
+EXTERNAL_DISK_PATH=/Volumes/ExternalDisk
+
+make start
+make restore-external dump=acme_prod.zip
+```
+
+`EXTERNAL_DISK_PATH` affects the whole session, not just the restore — as long
+as it is set, `make start`, `make stop`, `make psql`, etc. all target the
+external disk. Postgres data lives under `$EXTERNAL_DISK_PATH/pgdata/<db>` and
+the filestore under `$EXTERNAL_DISK_PATH/.data/<db>`, mirroring the internal
+disk's layout. The disk must be formatted with a filesystem that supports Unix
+permissions (APFS or Mac OS Extended/HFS+) — not exFAT/FAT32.
+
+`make restore-external` fails fast if `EXTERNAL_DISK_PATH` is unset or if the
+path doesn't exist/isn't writable (e.g. the disk is unplugged), instead of
+silently falling back to the internal disk.
 
 ---
 

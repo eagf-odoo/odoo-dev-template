@@ -7,9 +7,15 @@ ODOO_VAULT_PATH    ?= $(HOME)/Odoo/.vault
 ODOO_WORKTREE_PATH ?= $(HOME)/Odoo/Worktrees
 ODOO_UPGRADE_PATH  ?= $(HOME)/Odoo/Upgrade
 DUMPS_PATH         ?= $(HOME)/Odoo/Dumps
+EXTERNAL_DISK_PATH ?=
 
 # Compose files — base + mode-specific override
 COMPOSE_FILES := -f docker-compose.yml -f docker-compose.$(ODOO_MODE).yml
+
+# External disk overlay — redirects Postgres data + filestore off the internal disk
+ifneq ($(strip $(EXTERNAL_DISK_PATH)),)
+COMPOSE_FILES += -f docker-compose.external.yml
+endif
 
 # Auxiliary HTTP port for update/test processes running alongside the live server.
 # The container always binds Odoo on 8069; this port avoids the conflict.
@@ -44,7 +50,7 @@ else
 _DEMO_FLAG := $(if $(filter 19.%,$(BUILD_VERSION)),,--without-demo all)
 endif
 
-.PHONY: start stop restart restart-all logs shell psql extract ps restore update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-db list-worktrees workspace agent help
+.PHONY: start stop restart restart-all logs shell psql extract ps restore restore-external update test test-tags test-file build build-agent destroy reset-agent pull-all worktree worktree-add worktree-remove check-env check-image check-ports check-worktrees check-version check-agent-image check-claude-md check-running list list-db list-worktrees workspace agent help
 
 check-env:
 	@if [ ! -f .env ]; then \
@@ -335,6 +341,15 @@ restore: check-running ## Restore a database. Usage: make restore dump=backup.zi
 	@[ -n "$(dump)" ] || { echo ""; echo "  \033[31mError: dump= is required. Usage: make restore dump=backup.zip [db=other_name]\033[0m"; echo ""; exit 1; }
 	./restore.sh dumps/$(dump) $(db)
 
+restore-external: check-running ## Restore a database with data on an external disk. Usage: make restore-external dump=backup.zip [db=other_name]
+	@[ -n "$(EXTERNAL_DISK_PATH)" ] || { echo ""; echo "  \033[31mError: EXTERNAL_DISK_PATH is not set in .env.\033[0m"; echo "  Set it to the mount point of your external disk — see .env.example."; echo ""; exit 1; }
+	@[ -d "$(EXTERNAL_DISK_PATH)" ] && [ -w "$(EXTERNAL_DISK_PATH)" ] || { echo ""; echo "  \033[31mError: EXTERNAL_DISK_PATH ($(EXTERNAL_DISK_PATH)) does not exist or is not writable.\033[0m"; echo "  Make sure the external disk is connected and mounted."; echo ""; exit 1; }
+	@[ -n "$(dump)" ] || { echo ""; echo "  \033[31mError: dump= is required. Usage: make restore-external dump=backup.zip [db=other_name]\033[0m"; echo ""; exit 1; }
+	@echo ""
+	@echo "  \033[32m✓ Restoring to external disk: $(EXTERNAL_DISK_PATH)\033[0m"
+	@echo ""
+	./restore.sh dumps/$(dump) $(db)
+
 update: check-running check-worktrees ## Update Odoo modules. Usage: make update modules=mod1,mod2 [db=other_name]
 	@[ -n "$(modules)" ] || { echo ""; echo "  \033[31mError: modules= is required. Usage: make update modules=mod1,mod2\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
@@ -385,9 +400,13 @@ destroy: check-env stop ## Remove all containers, networks and volumes (deletes 
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
 		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
 		&& docker volume rm --force \
-			$(COMPOSE_PROJECT_NAME)_odoo-db-data \
 			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true \
-		&& rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)" \
+		&& if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
+			rm -rf "$(EXTERNAL_DISK_PATH)/.data/$(ODOO_DB_NAME)" "$(EXTERNAL_DISK_PATH)/pgdata/$(ODOO_DB_NAME)"; \
+		else \
+			docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-db-data 2>/dev/null || true; \
+			rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)"; \
+		fi \
 		|| echo "Aborted."
 	@echo ""
 
