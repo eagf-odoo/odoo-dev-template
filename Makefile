@@ -390,7 +390,7 @@ test-file: check-running check-worktrees ## Run tests from a file. Usage: make t
 		$(_DEMO_FLAG) \
 		--stop-after-init
 
-destroy: check-env stop ## Remove all containers, networks and volumes (deletes the database)
+destroy: check-env ## Remove all containers, networks and volumes (deletes the database)
 	@echo ""
 	@echo "  \033[33mWARNING\033[0m: This will remove all containers, networks, and Odoo volumes,"
 	@echo "  and the Odoo data directory for '$(ODOO_DB_NAME)'."
@@ -398,14 +398,27 @@ destroy: check-env stop ## Remove all containers, networks and volumes (deletes 
 	@echo "  This action is irreversible."
 	@echo ""
 	@read -p "  Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] \
-		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
-		&& docker volume rm --force \
-			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true \
+		&& if docker compose $(COMPOSE_FILES) up -d --wait db > /dev/null 2>&1; then \
+			_dbs=$$(docker compose $(COMPOSE_FILES) exec -T db psql -U odoo -d postgres -Atc \
+				"SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname;" 2>/dev/null); \
+			_dbs="$$_dbs $(ODOO_DB_NAME)"; \
+		else \
+			echo "  \033[33mWarning\033[0m: could not reach the database — only removing the filestore for '$(ODOO_DB_NAME)'."; \
+			echo "  Filestores for any secondary databases (e.g. restored via 'db=other_name') may be left orphaned on disk."; \
+			_dbs="$(ODOO_DB_NAME)"; \
+		fi \
 		&& if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
-			rm -rf "$(EXTERNAL_DISK_PATH)/.data/$(ODOO_DB_NAME)" "$(EXTERNAL_DISK_PATH)/pgdata/$(ODOO_DB_NAME)"; \
+			for _db in $$_dbs; do rm -rf "$(EXTERNAL_DISK_PATH)/.data/$$_db"; done; \
+		else \
+			for _db in $$_dbs; do rm -rf "$(HOME)/Odoo/.data/$$_db"; done; \
+		fi \
+		&& docker compose $(COMPOSE_FILES) --profile pgadmin down \
+		&& { docker volume rm --force \
+			$(COMPOSE_PROJECT_NAME)_odoo-pgadmin-data 2>/dev/null || true; } \
+		&& if [ -n "$(strip $(EXTERNAL_DISK_PATH))" ]; then \
+			rm -rf "$(EXTERNAL_DISK_PATH)/pgdata/$(ODOO_DB_NAME)"; \
 		else \
 			docker volume rm --force $(COMPOSE_PROJECT_NAME)_odoo-db-data 2>/dev/null || true; \
-			rm -rf "$(HOME)/Odoo/.data/$(ODOO_DB_NAME)"; \
 		fi \
 		|| echo "Aborted."
 	@echo ""
