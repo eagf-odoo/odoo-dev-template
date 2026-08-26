@@ -237,18 +237,18 @@ check-version:
 	fi
 
 start: check-env check-worktrees check-image check-ports workspace check-version ## Start the environment
-	@if docker compose $(COMPOSE_FILES) ps --services --filter status=running 2>/dev/null | grep -q "^web$$"; then \
-		echo ""; \
-		echo "  \033[33m⚠ Environment is already running → http://localhost:$${ODOO_PORT:-8069}\033[0m"; \
-		echo "  Use 'make stop' to bring it down or 'make restart' to restart Odoo."; \
-		echo ""; \
+	@_was_running=0; \
+	docker compose $(COMPOSE_FILES) ps --services --filter status=running 2>/dev/null | grep -q "^web$$" && _was_running=1; \
+	docker compose $(COMPOSE_FILES) up -d && \
+	echo "" && \
+	if [ "$$_was_running" = "1" ]; then \
+		echo "  \033[32m✓ Environment reloaded → http://localhost:$${ODOO_PORT:-8069}\033[0m"; \
+		echo "  (picked up any .env changes — version, ports, etc.)"; \
 	else \
-		docker compose $(COMPOSE_FILES) up -d && \
-		echo "" && \
-		echo "  \033[32m✓ Environment started → http://localhost:$${ODOO_PORT:-8069}\033[0m" && \
-		echo "  Run 'make logs' in a new terminal to follow the Odoo startup." && \
-		echo ""; \
-	fi
+		echo "  \033[32m✓ Environment started → http://localhost:$${ODOO_PORT:-8069}\033[0m"; \
+	fi && \
+	echo "  Run 'make logs' in a new terminal to follow the Odoo startup." && \
+	echo ""
 
 stop: check-env ## Stop the environment
 	docker compose $(COMPOSE_FILES) --profile pgadmin down
