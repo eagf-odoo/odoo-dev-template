@@ -114,6 +114,10 @@ make update modules=acme_sale
 # Update multiple modules at once
 make update modules=acme_sale,acme_account,acme_stock
 
+# Pass extra flags through to odoo-bin when you need them
+# (e.g. force translations to reload from source .po files)
+make update modules=acme_sale flags="--i18n-overwrite"
+
 # Watch the logs while the update runs
 make logs
 
@@ -170,7 +174,49 @@ make update modules=acme_sale   # applies DB changes
 
 ---
 
-## 4. Version upgrade workflow
+## 4. Restoring a large database to an external disk
+
+Use this when a dump (Postgres data + filestore) is too large for the
+internal disk — common with 50GB+ production databases.
+
+```bash
+cd ~/Odoo/Customers/acme
+
+# 1. Point the template at your external disk (one-time, in .env)
+#    EXTERNAL_DISK_PATH=/Volumes/ExternalDisk
+
+# 2. Place the dump and restore
+cp ~/Downloads/acme_prod_70gb.zip ~/Odoo/Dumps/
+make restore-external dump=acme_prod_70gb.zip
+
+# 3. Start as usual — everything works exactly like a normal restore
+make start
+```
+
+`EXTERNAL_DISK_PATH` redirects **both** the Postgres data directory and
+the Odoo filestore for this client to `$EXTERNAL_DISK_PATH/.data/<db>` —
+nothing is written to the internal disk. Re-running `make restore-external`
+against the same `db` is safe: the filestore is fully replaced (removed,
+then reinstalled from the new dump), never merged or duplicated.
+
+### Cleaning up an orphaned filestore
+
+`make reset` only drops and recreates the Postgres database — it never
+touches the filesystem. So if you `make reset` and don't restore again,
+the filestore from the last restore stays on disk with no database
+referencing it. Free that space with:
+
+```bash
+make clean-filestore                    # uses ODOO_DB_NAME
+make clean-filestore db=acme_17_prod    # a secondary/reference database
+```
+
+This reads the same `EXTERNAL_DISK_PATH` setting, so it finds the right
+path whether the data lives on the internal or the external disk.
+
+---
+
+## 5. Version upgrade workflow
 
 Use this when migrating a client from one Odoo version to another.
 Switch `ODOO_MODE=upgrade` in `.env` — the Makefile and Compose files
@@ -243,7 +289,7 @@ up the new `ODOO_DB_NAME`.
 
 ---
 
-## 5. Building the Docker image
+## 6. Building the Docker image
 
 Required the first time you use a given Odoo version on this machine.
 Subsequent clients on the same version can skip this step — the image
@@ -267,7 +313,7 @@ ODOO_VERSION=17.0 make build
 
 ---
 
-## 6. Using a pre-built image from DockerHub
+## 7. Using a pre-built image from DockerHub
 
 If the images are already published, skip `make build` entirely.
 
@@ -303,3 +349,5 @@ make start
 | Restore from dump | `make restore dump=backup.zip` (or `.dump`, `.sql`) then `make start` |
 | Restore secondary DB (upgrade reference) | `make restore dump=backup.zip db=acme_17_prod` |
 | Restore a large dump to an external disk | `EXTERNAL_DISK_PATH=/Volumes/ExternalDisk` then `make restore-external dump=backup.zip` |
+| Clean an orphaned filestore after `reset` | `make clean-filestore` (or `db=other_name`) |
+| Force translations to reload from .po files | `make update modules=acme_sale flags="--i18n-overwrite"` |
