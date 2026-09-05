@@ -350,16 +350,41 @@ restore-external: check-running ## Restore a database with data on an external d
 	@echo ""
 	./restore.sh dumps/$(dump) $(db)
 
-update: check-running check-worktrees ## Update Odoo modules. Usage: make update modules=mod1,mod2 [db=other_name]
+clean-filestore: check-env ## Remove a database's data dir (filestore + sessions) from disk. Usage: make clean-filestore [db=other_name]
+	@_db=$(if $(db),$(db),$(ODOO_DB_NAME)); \
+	_root=$(if $(strip $(EXTERNAL_DISK_PATH)),$(EXTERNAL_DISK_PATH)/.data,$(HOME)/Odoo/.data); \
+	_target="$$_root/$$_db"; \
+	if [ ! -d "$$_target" ]; then \
+		echo ""; \
+		echo "  Nothing to clean — $$_target does not exist."; \
+		echo ""; \
+		exit 0; \
+	fi; \
+	echo ""; \
+	echo "  \033[33mWARNING\033[0m: This will delete the data directory for '$$_db':"; \
+	echo "  $$_target"; \
+	echo "  This includes the filestore (attachments, reports) and session data."; \
+	echo "  This action is irreversible."; \
+	echo ""; \
+	read -rp "  Are you sure? [y/N] " confirm; \
+	[ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ] || { echo "  Aborted."; exit 1; }; \
+	docker compose $(COMPOSE_FILES) stop web > /dev/null 2>&1; true; \
+	rm -rf "$$_target"; \
+	echo ""; \
+	echo "  \033[32m✓ Removed $$_target\033[0m"; \
+	echo ""
+
+update: check-running check-worktrees ## Update Odoo modules. Usage: make update modules=mod1,mod2 [db=other_name] [flags="--i18n-overwrite"]
 	@[ -n "$(modules)" ] || { echo ""; echo "  \033[31mError: modules= is required. Usage: make update modules=mod1,mod2\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
 		-d $(if $(db),$(db),$(ODOO_DB_NAME)) \
 		-u $(modules) \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
-		--stop-after-init
+		--stop-after-init \
+		$(flags)
 
-test: check-running check-worktrees ## Run tests for modules. Usage: make test modules=sale,account [demo=true] [db=other_name]
+test: check-running check-worktrees ## Run tests for modules. Usage: make test modules=sale,account [demo=true] [db=other_name] [flags="--i18n-overwrite"]
 	@[ -n "$(modules)" ] || { echo ""; echo "  \033[31mError: modules= is required. Usage: make test modules=mod1,mod2\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
@@ -368,9 +393,10 @@ test: check-running check-worktrees ## Run tests for modules. Usage: make test m
 		--test-enable \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		$(_DEMO_FLAG) \
-		--stop-after-init
+		--stop-after-init \
+		$(flags)
 
-test-tags: check-running check-worktrees ## Run tests by tag. Usage: make test-tags tags=/module:Class.method [demo=true] [db=other_name]
+test-tags: check-running check-worktrees ## Run tests by tag. Usage: make test-tags tags=/module:Class.method [demo=true] [db=other_name] [flags="--i18n-overwrite"]
 	@[ -n "$(tags)" ] || { echo ""; echo "  \033[31mError: tags= is required. Usage: make test-tags tags=/module:Class.method\033[0m"; echo ""; exit 1; }
 	docker compose $(COMPOSE_FILES) exec web python $(ODOO_BIN) \
 		-c $(ODOO_CONF) \
@@ -378,7 +404,8 @@ test-tags: check-running check-worktrees ## Run tests by tag. Usage: make test-t
 		--test-tags $(tags) \
 		--http-port $(ODOO_AUX_HTTP_PORT) \
 		$(_DEMO_FLAG) \
-		--stop-after-init
+		--stop-after-init \
+		$(flags)
 
 test-file: check-running check-worktrees ## Run tests from a file. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py [demo=true] [db=other_name]
 	@[ -n "$(file)" ] || { echo ""; echo "  \033[31mError: file= is required. Usage: make test-file file=/mnt/extra-addons/module/tests/test_x.py\033[0m"; echo ""; exit 1; }
@@ -664,6 +691,7 @@ help: ## Show this help message
 	@echo "Examples:"
 	@echo "  make restore dump=client_prod.dump"
 	@echo "  make restore dump=client_prod.dump db=cliente_17_prod"
+	@echo "  make clean-filestore db=cliente_17_prod"
 	@echo "  make update modules=sale,account"
 	@echo "  make test modules=sale,account"
 	@echo "  make test-tags tags=/sale:TestSale.test_method"
