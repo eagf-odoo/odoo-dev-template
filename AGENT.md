@@ -77,7 +77,7 @@ make reset-agent
 ## Custom CLAUDE.md location
 
 By default the agent loads the system prompt from `~/Odoo/.claude-md/CLAUDE.md`.
-If your `psmx-claude-md` clone lives elsewhere, set `CLAUDE_PATH` in `.env`:
+If your CLAUDE.md clone lives elsewhere, set `CLAUDE_PATH` in `.env`:
 
 ```bash
 CLAUDE_PATH=~/path/to/your/CLAUDE.md

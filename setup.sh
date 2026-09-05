@@ -33,7 +33,6 @@ ENTERPRISE_REPO="git@github.com:odoo/enterprise.git"
 DESIGN_THEMES_REPO="git@github.com:odoo/design-themes.git"
 UPGRADE_REPO="git@github.com:odoo/upgrade.git"
 UPGRADE_UTIL_REPO="git@github.com:odoo/upgrade-util.git"
-CLAUDE_MD_REPO="git@github.com:odoo-ps/psmx-claude-md.git"
 CLAUDE_MD_DIR="$ODOO_BASE/.claude-md"
 
 # --- Versions ----------------------------------------------------------------
@@ -352,14 +351,22 @@ setup_claude_md() {
   echo ""
 
   if [[ ! "$use_ai" =~ ^[Yy]$ ]]; then
-    print_info "Skipped — run setup.sh again or clone manually to enable later:"
-    echo -e "    ${CYAN}git clone $CLAUDE_MD_REPO ~/Odoo/.claude-md${NC}"
+    print_info "Skipped — run setup.sh again later, or set CLAUDE_PATH in .env to point at your own CLAUDE.md."
+    echo ""
+    return
+  fi
+
+  read -rp "  Git URL of your own CLAUDE.md repo (leave empty to skip): " claude_md_repo
+  echo ""
+
+  if [ -z "$claude_md_repo" ]; then
+    print_info "Skipped — create ~/Odoo/.claude-md/CLAUDE.md yourself, or set CLAUDE_PATH in .env."
     echo ""
     return
   fi
 
   echo -e "  Cloning ${BOLD}CLAUDE.md${NC} system prompt..."
-  git clone "$CLAUDE_MD_REPO" "$CLAUDE_MD_DIR"
+  git clone "$claude_md_repo" "$CLAUDE_MD_DIR"
   print_ok ".claude-md/"
   CLAUDE_MD_SETUP=true
 }
