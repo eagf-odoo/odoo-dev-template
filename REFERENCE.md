@@ -504,9 +504,9 @@ See [AGENT.md](AGENT.md) for full documentation on the AI agent and available to
 ### System prompt (CLAUDE.md)
 
 `make agent` runs `check-claude-md` before starting. If `CLAUDE.md` is missing it
-exits with instructions to re-run `setup.sh` (which clones the prompt repo) or to
-clone it manually. If the file exists but the repo has unpulled commits, a warning
-is printed — the session still starts but the prompt may be out of date.
+exits with instructions to re-run `setup.sh` (which prompts for your own CLAUDE.md
+repo) or to clone one manually. If the file exists but the repo has unpulled commits,
+a warning is printed — the session still starts but the prompt may be out of date.
 
 ### Customer code access
 
